@@ -123,7 +123,10 @@ export_md.py 自动导出
    - 进度看板：`grep "第X章" 大纲/进度看板.md` — 确认有4列格式
    - 剧情线追踪：`grep "第X章" 大纲/剧情线追踪.md | head -1` — 确认有本章条目
    - 编年史：`grep "第X章" 大纲/编年史.md` — 确认有本章条目
-5. 只有上述全部完成才返回"完成"
+5. 运行衔接检查：python3 check_transition.py "书名" X+1
+   - 如果有问题，根据报告适当修正
+   - 如果是小问题（≤2个⚠️）可接受，大问题（≥3个❌）建议修正
+6. 只有上述全部完成才返回"完成"
 ```
 
 **收尾脚本**：`scripts/post_chapter.py`（SQLite 版）
@@ -523,7 +526,8 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 - `references/progress-dashboard.md` — 进度看板模板
 - `references/character-arc-tracker.md` — 角色弧光追踪
 - `scripts/init_novel.py` — 初始化脚本
-- `scripts/verify_chapter.py` — 章节验证脚本
+- `scripts/verify_chapter.py` — 章节验证脚本（字数）
+- `scripts/check_transition.py` — 章节衔接检查（场景/时间/情绪/钩子）
 - `scripts/tracking_db.py` — SQLite 数据库操作模块
 - `scripts/export_md.py` — Markdown 导出模块
 - `scripts/post_chapter.py` — 子代理收尾脚本（SQLite 版，写入数据库+导出MD）
