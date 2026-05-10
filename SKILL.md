@@ -74,9 +74,21 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 - 约3000字
 - 用终端cat heredoc一次性写完（不用write_file，会截断）
 - 章节内容里不要用---做场景分隔（---是审核报告分隔符）
-- 写完后用 verify_chapter.py 验证
 - 路径：正文/卷X_名称/第X章.md
+
+章节写完后必须执行以下收尾步骤（必须全部完成才能返回）：
+1. 运行验证：python3 verify_chapter.py 第X章.md 3000
+2. 如果不合格，扩充内容直到合格
+3. 运行追踪更新：python3 post_chapter.py "书名" X Y "核心事件"
+4. 验证追踪文件包含第X章：grep "第X章" 大纲/剧情线追踪.md
+5. 只有上述全部完成才返回"完成"
 ```
+
+**收尾脚本**：`scripts/post_chapter.py`
+- 自动更新：剧情线追踪.md / 进度看板.md / 编年史.md / 角色弧光追踪.md
+- 必须运行且验证通过，才算章节真正完成
+
+**⚠️ 强制规则**：子代理返回前必须确认收尾步骤全部完成。未更新追踪文件就返回=任务失败。
 
 **备选方案：write_file + patch 分段写入**（仅在子代理不可用时）
 
@@ -469,8 +481,9 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 - `references/character-arc-tracker.md` — 角色弧光追踪
 - `scripts/init_novel.py` — 初始化脚本
 - `scripts/verify_chapter.py` — 章节验证脚本
+- `scripts/post_chapter.py` — 子代理收尾脚本（自动更新追踪文件）
 - `templates/chapter-template.md` — 章节模板
 
 ---
 
-*最后更新：2025-05-10（子代理章节写入方案）*
+*最后更新：2025-05-10（子代理章节写入方案 + post_chapter收尾脚本）*
