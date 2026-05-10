@@ -32,42 +32,44 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 
 ---
 
-## 追踪数据存储架构
+**追踪数据存储架构**
 
-**存储方案**：SQLite + 自动导出 Markdown
+**存储方案**：SQLite + 自动导出 Markdown（通用）
 
 ```
 小说根目录/
 └── .tracking/
-    └── tracking.db          # SQLite 数据库（程序用）
+    └── tracking.db          # SQLite 数据库（所有追踪数据）
 大纲/*.md                    # 自动导出的 Markdown（人工阅读）
 ```
 
-**数据流**：
-```
-post_chapter.py
-    ↓
-写入 SQLite（原子操作，无格式问题）
-    ↓
-export_md.py 自动导出
-    ↓
-大纲/*.md（格式永远正确）
+**数据库表结构**：
+| 表名 | 用途 |
+|------|------|
+| `chapters` | 章节信息（id/字数/状态/核心事件） |
+| `character_arcs` | 角色弧光（id/名字/类型/状态/当前章节/转折点） |
+| `chronicle` | 编年史（时间/事件/章节） |
+| `plot_hooks` | 伏笔钩子（章节/描述/状态/已解章节） |
+| `world_state` | 世界状态（键值对） |
+
+**通用性**：所有数据从数据库读取，适用于任何小说。
+
+**新小说初始化**：
+```bash
+python3 scripts/init_tracking.py "新小说名"
+# 自动创建数据库 + 添加默认主角
 ```
 
 **脚本说明**：
 | 脚本 | 功能 |
 |------|------|
+| `init_tracking.py` | 初始化新小说数据库（通用） |
 | `tracking_db.py` | SQLite 数据库操作模块（CRUD） |
 | `export_md.py` | 从数据库导出 Markdown 文件 |
-| `post_chapter.py` | 主入口：写入数据库 + 导出 MD + 验证 |
-| `migrate_to_sqlite.py` | 从 MD 迁移到 SQLite（一次性） |
-| `verify_chapter.py` | 章节验证脚本 |
-
-**优点**：
-- 程序端只有 SQLite，不用解析字符串
-- MD 文件自动生成，格式永远正确
-- 零额外依赖（Python 标准库 `sqlite3`）
-- 数据库单一文件，方便备份
+| `post_chapter.py` | 主入口：写入数据库 + 角色检测 + 导出 MD + 验证 |
+| `get_context.py` | 从数据库生成章节上下文（通用） |
+| `verify_chapter.py` | 章节验证脚本（字数） |
+| `check_transition.py` | 章节衔接检查（场景/时间/情绪/钩子） |
 
 ---
 
@@ -535,14 +537,15 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 - `references/delegate-batch-failure.md` — 子代理批量失败分析（历史参考）
 - `references/progress-dashboard.md` — 进度看板模板
 - `references/character-arc-tracker.md` — 角色弧光追踪
-- `scripts/init_novel.py` — 初始化脚本
+- `scripts/init_tracking.py` — 初始化新小说数据库（通用）
+- `scripts/init_novel.py` — 初始化小说项目
 - `scripts/verify_chapter.py` — 章节验证脚本（字数）
 - `scripts/check_transition.py` — 章节衔接检查（场景/时间/情绪/钩子）
 - `scripts/get_context.py` — 章节上下文生成（角色状态/伏笔/关系线）
 - `scripts/tracking_db.py` — SQLite 数据库操作模块
 - `scripts/export_md.py` — Markdown 导出模块
-- `scripts/post_chapter.py` — 子代理收尾脚本（SQLite 版，写入数据库+导出MD）
-- `scripts/migrate_to_sqlite.py` — MD 到 SQLite 迁移脚本
+- `scripts/post_chapter.py` — 子代理收尾脚本（通用版：数据库+角色检测+导出MD）
+- `scripts/migrate_to_sqlite.py` — 嘴强剑仙专用迁移脚本（历史数据）
 - `templates/chapter-template.md` — 章节模板
 
 ---

@@ -1,30 +1,25 @@
 #!/usr/bin/env python3
 """
-post_chapter.py — 子代理章节写完后自动更新追踪文件（SQLite 版）
+post_chapter.py — 子代理章节写完后自动更新追踪文件（通用版）
 
 用法：
-  python3 post_chapter.py <书名> <章节号> <字数> "<核心事件>" [章节文件路径]
-
-示例：
-  python3 post_chapter.py "嘴强剑仙" 13 2856 "大比32强，陆天击败对手"
-  python3 post_chapter.py "嘴强剑仙" 14 3100 "陆天晋级16强" "/path/to/chapter14.md"
+  python3 post_chapter.py <书名> <章节号> <字数> "<核心事件>" [章节文件] [伏笔]
+  python3 post_chapter.py "我的小说" 5 2800 "主角发现秘密" "/path/ch5.md" "主角身世之谜"
+  python3 post_chapter.py "我的小说" 6 3000 "主角击败BOSS"
 
 流程：
-  1. 写入 SQLite 数据库
-  2. 自动导出所有 Markdown 追踪文件
-  3. 验证导出结果
+  1. 写入 SQLite 数据库（章节 + 角色互动）
+  2. 添加伏笔钩子（如果提供了）
+  3. 导出所有 Markdown 追踪文件
+  4. 验证导出结果
 """
 
 import sys
 import os
 
-# 导入同目录模块
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tracking_db
 import export_md
-
-# 已知角色名
-KNOWN_CHARS = tracking_db.CHARACTER_IDS  # {'陆天': 'A01', ...}
 
 def log(msg):
     print(f"  → {msg}")
@@ -33,19 +28,29 @@ def error_exit(msg):
     print(f"❌ 错误: {msg}")
     sys.exit(1)
 
-def detect_characters(chapter_path: str = None) -> list:
-    """从章节文件检测出现的角色"""
+def get_all_char_names(db_path: str) -> dict:
+    """从数据库获取所有角色名（name -> id 映射）"""
+    arcs = tracking_db.get_all_character_arcs(db_path)
+    return {arc['name']: arc['id'] for arc in arcs}
+
+def detect_and_update_characters(db_path: str, chapter_path: str, chapter_num: int) -> list:
+    """从章节文件检测出现的角色，并更新它们的最新互动章节"""
     if not chapter_path or not os.path.exists(chapter_path):
+        return []
+    
+    char_names = get_all_char_names(db_path)
+    if not char_names:
         return []
     
     with open(chapter_path, 'r', encoding='utf-8') as f:
         text = f.read()
     
     found = []
-    for name, char_id in KNOWN_CHARS.items():
+    for name, char_id in char_names.items():
         if name in text and char_id not in found:
             found.append(char_id)
             log(f"检测到角色: {name} ({char_id})")
+            tracking_db.touch_character(db_path, char_id, chapter_num)
     return found
 
 def find_chapter_file(novel_root: str, chapter_num: int) -> str:
@@ -58,7 +63,7 @@ def find_chapter_file(novel_root: str, chapter_num: int) -> str:
 
 def main():
     if len(sys.argv) < 5:
-        print("用法: python3 post_chapter.py <书名> <章节号> <字数> \"<核心事件>\" [章节文件路径]")
+        print("用法: python3 post_chapter.py <书名> <章节号> <字数> \"<核心事件>\" [章节文件路径] [伏笔]")
         sys.exit(1)
     
     book_name = sys.argv[1]
@@ -66,12 +71,15 @@ def main():
     char_count = int(sys.argv[3])
     core_event = sys.argv[4]
     chapter_path = sys.argv[5] if len(sys.argv) > 5 else None
+    plot_hook = sys.argv[6] if len(sys.argv) > 6 else None
     
     print(f"\n📝 更新追踪文件")
     print(f"  书名: {book_name}")
     print(f"  章节: 第{chapter_num}章")
     print(f"  字数: {char_count}")
     print(f"  事件: {core_event}")
+    if plot_hook:
+        print(f"  伏笔: {plot_hook}")
     
     # 获取数据库路径
     try:
@@ -101,19 +109,22 @@ def main():
     if not chapter_path:
         chapter_path = find_chapter_file(novel_root, chapter_num)
     
-    characters = detect_characters(chapter_path)
+    characters = detect_and_update_characters(db_path, chapter_path, chapter_num)
     
     # 3. 追加编年史
     log("追加编年史...")
-    # 根据章节号估算时间（简化：每章一天）
-    time_label = f"入学第{chapter_num}天"
-    tracking_db.append_chronicle(db_path, chapter_num, time_label, core_event)
+    tracking_db.append_chronicle(db_path, chapter_num, f"第{chapter_num}章", core_event)
     
-    # 4. 导出全部 Markdown
+    # 4. 添加伏笔（如果提供了）
+    if plot_hook:
+        hook_id = tracking_db.add_plot_hook(db_path, chapter_num, plot_hook)
+        log(f"添加伏笔: 「{plot_hook}」（ID: {hook_id}）")
+    
+    # 5. 导出全部 Markdown
     log("导出 Markdown 文件...")
     export_md.export_all(book_name)
     
-    # 5. 验证导出结果
+    # 6. 验证导出结果
     print("\n=== 验证追踪文件 ===")
     outline_dir = os.path.join(novel_root, "大纲")
     for fname in ["进度看板.md", "剧情线追踪.md", "编年史.md"]:
@@ -126,8 +137,7 @@ def main():
             else:
                 print(f"  ❌ {fname}: 未找到第{chapter_num}章！")
         else:
-            print(f"  ⏭️  {fname}: 文件不存在")
-    # 角色弧光追踪不按章节逐章记录，无需验证章节号
+            print(f"  ⏭️  {fname}: 文件不存在（可选）")
     
     print("\n🎉 追踪文件更新完成！")
 

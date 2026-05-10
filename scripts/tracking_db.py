@@ -92,6 +92,18 @@ def init_db(db_path: str) -> None:
             value           TEXT
         )
     """)
+
+    # 伏笔钩子表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS plot_hooks (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            chapter_id      INTEGER,
+            plot            TEXT,
+            status          TEXT DEFAULT 'active',
+            resolved_chapter INTEGER,
+            created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     
     conn.commit()
     conn.close()
@@ -201,6 +213,18 @@ def update_character_arc(db_path: str, char_id: str, chapter_id: int,
     conn.commit()
     conn.close()
 
+def touch_character(db_path: str, char_id: str, chapter_id: int) -> None:
+    """更新角色的最新互动章节（不添加转折点）"""
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE character_arcs
+        SET current_chapter = ?
+        WHERE id = ? AND current_chapter < ?
+    """, (chapter_id, char_id, chapter_id))
+    conn.commit()
+    conn.close()
+
 def get_all_character_arcs(db_path: str) -> List[Dict]:
     """获取所有角色弧光"""
     conn = get_connection(db_path)
@@ -227,6 +251,55 @@ def get_character_arc(db_path: str, char_id: str) -> Optional[Dict]:
         d['key_moments'] = json.loads(d['key_moments'] or "[]")
         return d
     return None
+
+# ==================== 伏笔钩子操作 ====================
+
+def add_plot_hook(db_path: str, chapter_id: int, plot: str) -> int:
+    """添加伏笔钩子，返回自增ID"""
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO plot_hooks (chapter_id, plot, status)
+        VALUES (?, ?, 'active')
+    """, (chapter_id, plot))
+    hook_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return hook_id
+
+def get_active_plots(db_path: str) -> List[Dict]:
+    """获取所有活跃伏笔"""
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM plot_hooks
+        WHERE status = 'active'
+        ORDER BY chapter_id
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def resolve_plot_hook(db_path: str, hook_id: int, resolved_chapter: int) -> None:
+    """标记伏笔已解开"""
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE plot_hooks
+        SET status = 'resolved', resolved_chapter = ?
+        WHERE id = ?
+    """, (resolved_chapter, hook_id))
+    conn.commit()
+    conn.close()
+
+def get_plot_by_id(db_path: str, hook_id: int) -> Optional[Dict]:
+    """根据ID获取伏笔"""
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM plot_hooks WHERE id = ?", (hook_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
 
 # ==================== 编年史操作 ====================
 
