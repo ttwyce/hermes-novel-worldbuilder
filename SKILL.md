@@ -80,8 +80,14 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 1. 运行验证：python3 verify_chapter.py 第X章.md 3000
 2. 如果不合格，扩充内容直到合格
 3. 运行追踪更新：python3 post_chapter.py "书名" X Y "核心事件"
-4. 验证追踪文件包含第X章：grep "第X章" 大纲/剧情线追踪.md
+4. 验证追踪文件已正确更新（不是只检查脚本输出，而是检查文件内容）：
+   - 进度看板：`grep "第X章" 大纲/进度看板.md` — 确认是4列格式，没有残留列
+   - 剧情线追踪：`grep "### 第X章（已完成）" 大纲/剧情线追踪.md | wc -l` — 确认=1（不是2）
+   - 编年史：`grep -n "第X章" 大纲/编年史.md` — 确认新行在表格内，不在---前
+   - 角色弧光：`grep "### 第X章" 大纲/角色弧光追踪.md | wc -l` — 确认=1（不是2）
 5. 只有上述全部完成才返回"完成"
+
+⚠️ 警惕：post_chapter.py 可能在文件已有数据时插入错误位置（残留列/重复章节）。必须用grep验证文件实际内容，不只是相信脚本输出。
 ```
 
 **收尾脚本**：`scripts/post_chapter.py`
@@ -486,4 +492,4 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 
 ---
 
-*最后更新：2025-05-10（子代理章节写入方案 + post_chapter收尾脚本）*
+*最后更新：2025-05-10（post_chapter.py准确性修复+追踪文件验证强化）*
