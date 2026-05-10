@@ -27,7 +27,7 @@ def verify_chapter(filepath: str, target: int, tolerance: float = 0.8) -> dict:
     # 去除审核报告（如果混入了）
     lines = content.strip().split('\n')
     for i, line in enumerate(lines):
-        if '审核报告' in line or '---' == line.strip():
+        if '审核报告' in line or line == '---':
             lines = lines[:i]
             break
     
