@@ -8,6 +8,7 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 ## 快速入口
 
 - **章节写入**：`references/chapter-writing-workflow.md`
+- **写作风格问题**：`references/writing-style-pitfalls.md` ← 重要
 - **常见错误**：`references/common-pitfalls.md`
 - **审核清单**：`references/chapter-completion-checklist.md`
 - **写作速查**：`references/writing-quick-ref.md`
@@ -113,7 +114,15 @@ export_md.py 自动导出
 - 约3000字
 - 用终端cat heredoc一次性写完（不用write_file，会截断）
 - 章节内容里不要用---做场景分隔（---是审核报告分隔符）
-- 路径：正文/卷X_名称/第X章.md
+- 路径：正文/卷X名称/第X章.md
+
+=== 章节上下文（必须获取）===
+写作前先运行：python3 scripts/get_context.py "书名" X
+根据输出：
+- 确认主要角色的当前状态和上次互动时间
+- 安排久未互动的角色出场
+- 推进积压的伏笔
+- 注意衔接上章结尾的情绪和场景
 
 章节写完后必须执行以下收尾步骤（必须全部完成才能返回）：
 1. 运行验证：python3 verify_chapter.py 第X章.md 3000
@@ -518,6 +527,7 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 ## 参考文件
 
 - `references/chapter-writing-workflow.md` — 章节写入完整流程（已更新子代理方案）
+- `references/writing-style-pitfalls.md` — 写作风格常见问题（节奏/吐槽/人物线/衔接）
 - `references/chapter-completion-checklist.md` — 20项审核标准
 - `references/common-pitfalls.md` — 常见错误与事故
 - `references/writing-quick-ref.md` — 写作速查
@@ -528,6 +538,7 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 - `scripts/init_novel.py` — 初始化脚本
 - `scripts/verify_chapter.py` — 章节验证脚本（字数）
 - `scripts/check_transition.py` — 章节衔接检查（场景/时间/情绪/钩子）
+- `scripts/get_context.py` — 章节上下文生成（角色状态/伏笔/关系线）
 - `scripts/tracking_db.py` — SQLite 数据库操作模块
 - `scripts/export_md.py` — Markdown 导出模块
 - `scripts/post_chapter.py` — 子代理收尾脚本（SQLite 版，写入数据库+导出MD）
