@@ -31,6 +31,45 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 
 ---
 
+## 追踪数据存储架构
+
+**存储方案**：SQLite + 自动导出 Markdown
+
+```
+小说根目录/
+└── .tracking/
+    └── tracking.db          # SQLite 数据库（程序用）
+大纲/*.md                    # 自动导出的 Markdown（人工阅读）
+```
+
+**数据流**：
+```
+post_chapter.py
+    ↓
+写入 SQLite（原子操作，无格式问题）
+    ↓
+export_md.py 自动导出
+    ↓
+大纲/*.md（格式永远正确）
+```
+
+**脚本说明**：
+| 脚本 | 功能 |
+|------|------|
+| `tracking_db.py` | SQLite 数据库操作模块（CRUD） |
+| `export_md.py` | 从数据库导出 Markdown 文件 |
+| `post_chapter.py` | 主入口：写入数据库 + 导出 MD + 验证 |
+| `migrate_to_sqlite.py` | 从 MD 迁移到 SQLite（一次性） |
+| `verify_chapter.py` | 章节验证脚本 |
+
+**优点**：
+- 程序端只有 SQLite，不用解析字符串
+- MD 文件自动生成，格式永远正确
+- 零额外依赖（Python 标准库 `sqlite3`）
+- 数据库单一文件，方便备份
+
+---
+
 ## 单章写入流程
 
 ### 一、章节写前规划（必做）
@@ -80,18 +119,16 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 1. 运行验证：python3 verify_chapter.py 第X章.md 3000
 2. 如果不合格，扩充内容直到合格
 3. 运行追踪更新：python3 post_chapter.py "书名" X Y "核心事件"
-4. 验证追踪文件已正确更新（不是只检查脚本输出，而是检查文件内容）：
-   - 进度看板：`grep "第X章" 大纲/进度看板.md` — 确认是4列格式，没有残留列
-   - 剧情线追踪：`grep "### 第X章（已完成）" 大纲/剧情线追踪.md | wc -l` — 确认=1（不是2）
-   - 编年史：`grep -n "第X章" 大纲/编年史.md` — 确认新行在表格内，不在---前
-   - 角色弧光：`grep "### 第X章" 大纲/角色弧光追踪.md | wc -l` — 确认=1（不是2）
+4. 验证追踪文件已正确更新：
+   - 进度看板：`grep "第X章" 大纲/进度看板.md` — 确认有4列格式
+   - 剧情线追踪：`grep "第X章" 大纲/剧情线追踪.md | head -1` — 确认有本章条目
+   - 编年史：`grep "第X章" 大纲/编年史.md` — 确认有本章条目
 5. 只有上述全部完成才返回"完成"
-
-⚠️ 警惕：post_chapter.py 可能在文件已有数据时插入错误位置（残留列/重复章节）。必须用grep验证文件实际内容，不只是相信脚本输出。
 ```
 
-**收尾脚本**：`scripts/post_chapter.py`
-- 自动更新：剧情线追踪.md / 进度看板.md / 编年史.md / 角色弧光追踪.md
+**收尾脚本**：`scripts/post_chapter.py`（SQLite 版）
+- 自动写入 SQLite 数据库
+- 自动导出所有 Markdown 追踪文件（格式永远正确，无残留列问题）
 - 必须运行且验证通过，才算章节真正完成
 
 **⚠️ 强制规则**：子代理返回前必须确认收尾步骤全部完成。未更新追踪文件就返回=任务失败。
@@ -487,9 +524,12 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 - `references/character-arc-tracker.md` — 角色弧光追踪
 - `scripts/init_novel.py` — 初始化脚本
 - `scripts/verify_chapter.py` — 章节验证脚本
-- `scripts/post_chapter.py` — 子代理收尾脚本（自动更新追踪文件）
+- `scripts/tracking_db.py` — SQLite 数据库操作模块
+- `scripts/export_md.py` — Markdown 导出模块
+- `scripts/post_chapter.py` — 子代理收尾脚本（SQLite 版，写入数据库+导出MD）
+- `scripts/migrate_to_sqlite.py` — MD 到 SQLite 迁移脚本
 - `templates/chapter-template.md` — 章节模板
 
 ---
 
-*最后更新：2025-05-10（post_chapter.py准确性修复+追踪文件验证强化）*
+*最后更新：2026-05-10（SQLite存储方案迁移：tracking_db + export_md + post_chapter重写）*
