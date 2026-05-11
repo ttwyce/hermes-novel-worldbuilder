@@ -34,14 +34,16 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
     total = int(planned) if planned else (len(chapters) or 150)
     wc = int(word_count) if word_count else 3000
     
-    lines = [
-        "# 进度看板",
-        "",
-        f"## {book_name}",
-        "",
-        f"**总目标**：{total}章 / {total * wc // 10000}万字",
-        "",
-        "---",
+    # 读取模板文件，在"## 待处理问题"前插入章节进度表
+    existing_text = ""
+    if os.path.exists(out_path):
+        with open(out_path, 'r', encoding='utf-8') as f:
+            existing_text = f.read()
+    else:
+        existing_text = None
+    
+    # 生成新章节进度表
+    chapter_lines = [
         "",
         "## 章节进度",
         "",
@@ -50,29 +52,48 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
         "| 章节 | 状态 | 字数 | 备注 |",
         "|------|------|------|------|",
     ]
-    
     for ch in chapters:
         if ch['status'] == 'done':
-            lines.append(f"| 第{ch['id']}章 | ✅完成 | {ch['words']} | {ch['core_event'] or ''} |")
+            chapter_lines.append(f"| 第{ch['id']}章 | ✅完成 | {ch['words']} | {ch['core_event'] or ''} |")
         else:
-            lines.append(f"| 第{ch['id']}章 | 🔲 待写 | | |")
-    
-    lines.extend([
+            chapter_lines.append(f"| 第{ch['id']}章 | 🔲 待写 | | |")
+    chapter_lines.extend([
         "",
         f"**已写章节**：{len(completed)}/{total}（{len(completed)*100//max(total,1)}%）",
         f"**总字数**：{total_words}字",
         "",
-        "---",
-        "",
-        "## 当前世界状态",
-        "",
-        f"- **更新时间**：{datetime.now().strftime('%Y-%m-%d')}",
     ])
     
-    # 写入文件
+    if existing_text is None:
+        # 无模板，纯生成
+        lines = [
+            "# 进度看板",
+            "",
+            f"## {book_name}",
+            "",
+            f"**总目标**：{total}章 / {total * wc // 10000}万字",
+            "",
+            "---",
+        ] + chapter_lines + [
+            "---",
+            "",
+            "## 当前世界状态",
+            "",
+            f"- **更新时间**：{datetime.now().strftime('%Y-%m-%d')}",
+        ]
+    else:
+        # 有模板：在"## 待处理问题"前插入章节进度
+        marker = "## 待处理问题（BLOCKERS）"
+        if marker in existing_text:
+            parts = existing_text.split(marker)
+            lines_text = parts[0].rstrip('\n') + '\n\n' + '\n'.join(chapter_lines) + '\n\n---\n\n' + marker + parts[1]
+        else:
+            # 模板格式不符，直接替换末尾
+            lines_text = existing_text + '\n\n' + '\n'.join(chapter_lines)
+    
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
+        f.write(lines_text)
 
 # ==================== 导出剧情线追踪 ====================
 

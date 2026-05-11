@@ -24,7 +24,6 @@ trim_utils.py — 章节精简工具
 import sys
 import os
 import re
-import shutil
 from pathlib import Path
 
 # ==================== 冗余检测规则 ====================
@@ -131,69 +130,47 @@ def print_analysis(analysis: dict) -> None:
 
 def trim_to_target(filepath: str, target: int, dry_run: bool = True) -> dict:
     """
-    精简章节到目标字数。
+    分析并估算精简可节省的字数（不修改文件）。
+    无论 dry_run 何值，都不修改文件。实际精简在 auto_trim 中执行。
     返回：{'status': 'pass'/'fail', 'saved': N, 'final_len': M}
     """
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
-    
-    # 备份
-    bak_path = filepath + '.bak'
-    shutil.copy2(filepath, bak_path)
     
     # 去除审核报告
     if '---' in content:
         content = content.split('---')[0]
     
     original_len = len(content)
-    current = content
     
-    # 策略1：删除超长连续对话（同一角色>3句连续）
-    # 策略2：压缩重复形容词
-    # 策略3：删减过长场景描写
-    
-    # 逐段落扫描，找可删减的长段落
-    paragraphs = split_paragraphs(current)
+    # 逐段落扫描，估算可删减字数
+    paragraphs = split_paragraphs(content)
     surplus = original_len - target
     saved = 0
     
     if surplus <= 0:
         return {'status': 'pass', 'saved': 0, 'final_len': original_len}
     
-    # 从后往前处理（避免index偏移）
-    to_remove = []
     for i, p in enumerate(paragraphs):
         if surplus <= 0:
             break
         p_len = len(p)
         
-        # 对话段：保留60%，删40%
+        # 对话段：估计可删40%
         if p_len > 300 and re.search(r'[「『].{5,}[」』]', p):
             delete_amount = int(p_len * 0.3)
             surplus -= delete_amount
             saved += delete_amount
         
-        # 内心独白：保留65%
+        # 内心独白：估计可删35%
         elif p_len > 250 and re.search(r'[他她]感觉?|[他她]想到?', p):
             delete_amount = int(p_len * 0.35)
             surplus -= delete_amount
             saved += delete_amount
         
-        # 场景描写：保留70%
+        # 场景描写：估计可删30%
         elif p_len > 200 and re.search(r'阳光|微风|天空|大地|四周', p):
             delete_amount = int(p_len * 0.3)
-            surplus -= delete_amount
-            saved += delete_amount
-    
-    # 如果还不够，从后往前截断超长段落
-    if surplus > 0:
-        for i in range(len(paragraphs)-1, -1, -1):
-            if surplus <= 0:
-                break
-            p_len = len(paragraphs[i])
-            # 保留最后100字 + 开头
-            keep = min(100, p_len // 2)
-            delete_amount = min(surplus, p_len - keep)
             surplus -= delete_amount
             saved += delete_amount
     
@@ -225,10 +202,6 @@ def auto_trim(filepath: str, target: int) -> bool:
         
         if result['status'] == 'pass':
             print(f"\n✅ 精简完成！{result['actual']} 字（目标 {target} ±{int(target*0.2)}）")
-            # 清理备份
-            bak = filepath + '.bak'
-            if os.path.exists(bak):
-                os.remove(bak)
             return True
         
         # 需要精简

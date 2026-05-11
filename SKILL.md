@@ -30,6 +30,10 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 | 导出追踪文件 | `python3 scripts/export_md.py 「书名」` |
 | 检查章节衔接 | `python3 scripts/check_transition.py 「书名」 6` |
 
+> ⚠️ **角色需预注册**：`init_novel` 只创建主角（A01）。女主/配角需手动注册：
+> `python3 -c "import sys; sys.path.insert(0,'scripts'); from init_tracking import add_character; add_character('db路径', 'A02', '角色名', '深化型', '起点状态')"`
+> 预注册后 `get_context.py` 才能追踪他们的出场间隔。
+
 ---
 
 ## 快速入口
@@ -593,9 +597,42 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 
 ---
 
-## 参考文件
+## 质量审计清单
 
-### 核心流程
+每次技能完整性检查，按以下步骤执行：
+
+### 1. 硬编码扫描（导出函数）
+
+```bash
+# export_md.py 和 check_transition.py 中不应有硬编码书名/角色名
+grep -n "嘴强剑仙\|卷一_铺垫\|卷二_对抗\|卷三_高潮" scripts/export_md.py
+# 预期：无输出
+
+grep -A5 "scene_keywords = {" scripts/check_transition.py
+# 预期：已清空为注释模板
+```
+
+### 2. 完整流程测试（新小说名）
+
+```bash
+rm -rf ~/hermes/novels/审计测试
+python3 init_novel.py "审计测试" 80 2500 --主角 "测试主角"
+# 模拟写1章后导出
+python3 post_chapter.py "审计测试" 1 300 "测试事件"
+head -5 大纲/进度看板.md
+# 验证书名=审计测试，总目标=80章/20万字（不是150/45万字）
+rm -rf ~/hermes/novels/审计测试
+```
+
+### 3. SKILL.md 引用完整性
+
+参考文件列表（15个）与实际文件（15个）必须一致，scripts（10个）与实际一致。
+
+---
+
+### 参考文件
+
+#### 核心流程
 - `references/chapter-writing-workflow.md` — 章节写入完整流程（子代理方案）
 - `references/writing-style-pitfalls.md` — 写作风格常见问题（节奏/吐槽/人物线/衔接）
 - `references/chapter-completion-checklist.md` — 20项审核标准
@@ -633,4 +670,4 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 
 ---
 
-*最后更新：2026-05-11（修复export_tracking硬编码；SKILL.md参考文件列表补全）*
+*最后更新：2026-05-11（trim_utils修复：移除无用备份+明确dry_run语义；SKILL.md新增角色预注册说明）*
