@@ -5,6 +5,33 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 
 # novel-worldbuilder
 
+## 🚀 新书创建流程（5步上手）
+
+```
+① 用户给剧情梗概（≥50字）
+       ↓
+② 我生成书名选项 → 用户选书名
+       ↓
+③ 用户确认创作参数（5项）
+       ↓
+④ 运行初始化：python3 init_novel.py 「书名」 [章节数] [字数] --主角 主角名
+       ↓
+⑤ 我生成全套设定集 → 用户确认 → 开始写章节
+```
+
+**关键命令速查**：
+
+| 操作 | 命令 |
+|------|------|
+| 创建小说目录+数据库 | `python3 scripts/init_novel.py 「书名」 150 3000 --主角 主角名` |
+| 查看章节上下文 | `python3 scripts/get_context.py 「书名」 5` |
+| 验证章节字数 | `python3 scripts/verify_chapter.py 第5章.md 3000` |
+| 更新追踪文件 | `python3 scripts/post_chapter.py 「书名」 5 3000 「核心事件」` |
+| 导出追踪文件 | `python3 scripts/export_md.py 「书名」` |
+| 检查章节衔接 | `python3 scripts/check_transition.py 「书名」 6` |
+
+---
+
 ## 快速入口
 
 - **章节写入**：`references/chapter-writing-workflow.md`
@@ -12,7 +39,6 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 - **常见错误**：`references/common-pitfalls.md`
 - **审核清单**：`references/chapter-completion-checklist.md`
 - **写作速查**：`references/writing-quick-ref.md`
-- **Bug案例**：导出函数硬编码小说名导致新小说追踪文件污染 → `references/bugcase-export-hardcoded-novelname.md`
 
 ## 职能
 
@@ -372,13 +398,20 @@ tail -3 正文/卷一_XXX/第X章.md
 
 **规则**：书名与剧情核心元素相关，用「」包裹。
 
-### 步骤三：创建目录骨架
+### 步骤三：创建目录骨架 + 初始化追踪数据库
 
-用户选好书名后：
+用户选好书名后（**一条命令搞定目录+数据库**）：
 
 ```bash
-python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书名>
+python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书名> [总章节数] [每章字数] --主角 <主角名>
+# 示例：python3 init_novel.py 「时光缓缓」 80 3000 --主角 林晓
 ```
+
+此命令自动完成：
+1. 创建小说目录结构（世界观/人物/大纲/正文等）
+2. 生成3个追踪文件（剧情线追踪/进度看板/角色弧光追踪）
+3. 初始化SQLite追踪数据库
+4. 导出全部Markdown追踪文件
 
 ### 步骤四：预览确认（新增）
 
@@ -579,9 +612,10 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 - `scripts/tracking_db.py` — SQLite 数据库操作模块
 - `scripts/export_md.py` — Markdown 导出模块
 - `scripts/post_chapter.py` — 子代理收尾脚本（通用版：数据库+角色检测+导出MD）
+- `scripts/trim_utils.py` — 章节精简工具（分析/精简/自动压缩超长章节）
 - `scripts/migrate_to_sqlite.py` — 嘴强剑仙专用迁移脚本（历史数据）
 - `templates/chapter-template.md` — 章节模板
 
 ---
 
-*最后更新：2026-05-10（子代理+主Agent分工流程：子代理只写，主Agent验证+追踪。解决子代理超时问题）*
+*最后更新：2026-05-11（init_novel串联init_tracking；SKILL.md新增快速入口；trim_utils.py章节精简工具）*

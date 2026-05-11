@@ -2,6 +2,10 @@
 """创建小说目录结构并生成初始文件"""
 import os
 import sys
+import argparse
+
+# 同一目录的脚本可导入
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def create_novel_structure(novel_name: str, base_dir: str = None) -> str:
     """创建单本小说的完整目录结构，返回根目录路径"""
@@ -180,14 +184,34 @@ def create_tracking_files(novel_dir: str, total_chapters: int = 150, chapter_wor
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("用法: python init_novel.py 「书名」 [总章节数] [每章字数]")
+        print("用法: python init_novel.py 「书名」 [总章节数] [每章字数] [--主角 主角名]")
         sys.exit(1)
 
     novel_name = sys.argv[1]
     total_chapters = int(sys.argv[2]) if len(sys.argv) > 2 else 150
     chapter_word_count = int(sys.argv[3]) if len(sys.argv) > 3 else 3000
 
+    # 解析可选参数
+    protagonist = None
+    if "--主角" in sys.argv:
+        idx = sys.argv.index("--主角")
+        protagonist = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else None
+
     print(f"\n📚 开始创建小说目录: {novel_name}\n")
     root = create_novel_structure(novel_name)
     create_tracking_files(root, total_chapters, chapter_word_count)
-    print(f"\n✅ 完成！根目录: {root}\n")
+    print(f"\n✅ 目录结构创建完成: {root}")
+
+    # 自动初始化追踪数据库
+    print(f"\n🔄 初始化追踪数据库...\n")
+    import init_tracking
+    try:
+        db_path = init_tracking.init_tracking(novel_name, protagonist)
+        print(f"\n🎉 全部完成！")
+        print(f"\n  小说目录: {root}")
+        print(f"  追踪数据库: {db_path}")
+        print(f"\n下一步: 生成设定集 → 开始写第1章")
+    except FileNotFoundError as e:
+        print(f"\n⚠️ 追踪数据库初始化跳过: {e}")
+        print(f"  （需先创建目录，再次运行 init_novel.py 即可）")
+        print(f"\n✅ 目录已就绪，可开始生成设定集")
