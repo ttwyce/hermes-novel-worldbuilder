@@ -91,6 +91,8 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 > 历史Bug：export_progress_board 曾每次覆盖整个模板，导致 `基本参数`/`总体进度`/`分卷进度` 等精心设计的区块全部丢失。修复方式是在模板标记处做增量插入而非全量覆盖。
 > 
 > 另一历史Bug（2026-05-11）：`lines_text` 变量在 `if/elif/else` 分支中未被正确赋值导致 `UnboundLocalError`。根因：`existing_text is None` 分支内用 `lines = [...]`（列表）而非 `lines_text`（字符串），且 `elif marker in existing_text` 在 `existing_text is None` 分支之后但 `marker` 变量定义位置不对。修复方式：统一使用 `lines_text` 作为最终字符串变量，确保所有分支都有赋值。
+>
+> 全面检查修复（2026-05-11）：共9个问题——export_arc_tracking `current_state` 重复字段；rag_indexer overlap 负数风险（`effective_overlap = min(overlap, len(current)//2)`）；get_chapter_end 定义但从未使用（从 check_transition.py 移除）；generate_report 的 unused curr_chapter_end 参数（已移除）；trim_utils.py 的 `--target` 参数位置检测逻辑（含糊已简化）；trim_to_target 的 dry_run 参数从不生效（已移除）；post_chapter.py 自动注册循环内重复调用 get_all_character_arcs（改用预查缓存）；
 
 **新小说初始化**：
 ```bash

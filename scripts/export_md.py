@@ -206,13 +206,12 @@ def export_arc_tracking(db_path: str, out_path: str, novel_name: str) -> None:
             f"",
             f"- **弧光类型**：{arc['arc_type']}",
             f"- **起点**：{arc['start_state']}",
-            f"- **当前阶段**：{arc['current_state']}",
             f"- **关键转折点**：",
         ])
-        
+
         for moment in arc['key_moments']:
             lines.append(f"  - 第{moment['chapter']}章：{moment['event']}")
-        
+
         lines.append(f"- **当前心理状态**：{arc['current_state']}")
         lines.append("")
     

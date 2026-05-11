@@ -120,9 +120,10 @@ def split_chapter_into_chunks(text: str, chunk_size: int = 300, overlap: int = 5
         if len(current) >= chunk_size:
             chunks.append({"text": current.strip(), "start": current_start, "end": current_start + len(current)})
             # 保留 overlap 字符作为下个 chunk 的开头
-            if overlap > 0 and len(current) > overlap:
-                current = current[-overlap:]
-                current_start = current_start + len(current) - overlap
+            effective_overlap = min(overlap, len(current) // 2) if overlap > 0 else 0
+            if effective_overlap > 0:
+                current = current[-effective_overlap:]
+                current_start = current_start + len(current) - effective_overlap
             else:
                 current = ""
                 current_start = 0

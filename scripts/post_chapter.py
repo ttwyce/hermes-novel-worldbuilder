@@ -85,6 +85,10 @@ def detect_and_update_characters(db_path: str, chapter_path: str, chapter_num: i
         '大家说', '有人说',
         '她轻说', '他轻说', '它轻说',
     }
+
+    # 预查已有 ID 列表（避免循环内重复查询）
+    existing_ids_cache = [arc['id'] for arc in tracking_db.get_all_character_arcs(db_path)]
+
     mentioned = set()
     for m in dialogue_pattern.finditer(text):
         name = m.group(1)
@@ -94,9 +98,9 @@ def detect_and_update_characters(db_path: str, chapter_path: str, chapter_num: i
     # 自动注册未在数据库中的角色
     for name in mentioned:
         if name not in char_names:
-            # 自动分配ID：用下一个可用序号
-            existing_ids = [arc['id'] for arc in tracking_db.get_all_character_arcs(db_path)]
-            next_id = _get_next_char_id(existing_ids)
+            # 使用预查的 ID 列表分配新 ID（避免循环内重复查询）
+            next_id = _get_next_char_id(existing_ids_cache)
+            existing_ids_cache.append(next_id)  # 避免连续注册时分配相同 ID
             
             arc = {
                 'id': next_id,

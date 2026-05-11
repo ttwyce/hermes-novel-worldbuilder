@@ -62,14 +62,6 @@ def get_curr_chapter_start(chapter_content: str) -> str:
     text = ''.join(lines[:5])
     return text[:200] if len(text) > 200 else text
 
-def get_chapter_end(chapter_content: str) -> str:
-    """获取章节最后100字"""
-    lines = [l for l in chapter_content.split('\n') if l.strip() and not l.startswith('#')]
-    if not lines:
-        return ""
-    text = ''.join(lines[-3:])
-    return text[-100:] if len(text) > 100 else text
-
 def extract_hook(chapter_content: str) -> str:
     """提取章节末尾的钩子（最后一段）"""
     lines = [l for l in chapter_content.split('\n') if l.strip() and not l.startswith('#')]
@@ -287,7 +279,7 @@ def check_new_hook(chapter_content: str) -> dict:
     }
 
 def generate_report(chapter_num: int, prev_chapter_end: str, curr_chapter_start: str,
-                    curr_chapter_end: str, scene_check: dict, time_check: dict,
+                    scene_check: dict, time_check: dict,
                     emotion_check: dict, hook_check: dict, new_hook_check: dict) -> str:
     """生成衔接检查报告"""
     lines = [f"📖 章节衔接检查报告：第{chapter_num-1}章 → 第{chapter_num}章", ""]
@@ -400,7 +392,6 @@ def main():
     # 提取关键段落
     prev_end = get_prev_chapter_end(prev_content)
     curr_start = get_curr_chapter_start(curr_content)
-    curr_end = get_chapter_end(curr_content)
     
     # 执行各项检查
     scene_check = check_scene_consistency(prev_end, curr_start)
@@ -411,7 +402,7 @@ def main():
     
     # 生成报告
     report = generate_report(
-        curr_ch, prev_end, curr_start, curr_end,
+        curr_ch, prev_end, curr_start,
         scene_check, time_check, emotion_check, hook_check, new_hook_check
     )
     

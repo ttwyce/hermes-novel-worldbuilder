@@ -128,10 +128,10 @@ def print_analysis(analysis: dict) -> None:
     
     print(f"\n  估计总可精简：~{total_est} 字")
 
-def trim_to_target(filepath: str, target: int, dry_run: bool = True) -> dict:
+def trim_to_target(filepath: str, target: int) -> dict:
     """
     分析并估算精简可节省的字数（不修改文件）。
-    无论 dry_run 何值，都不修改文件。实际精简在 auto_trim 中执行。
+    实际精简在 auto_trim 中执行。
     返回：{'status': 'pass'/'fail', 'saved': N, 'final_len': M}
     """
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -280,11 +280,11 @@ def main():
         print_analysis(analysis)
         
     elif command == 'trim':
-        target = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[2] != '--target' else 3000
+        target = 3000
         if '--target' in sys.argv:
             idx = sys.argv.index('--target')
             target = int(sys.argv[idx + 1])
-        result = trim_to_target(filepath, target, dry_run=True)
+        result = trim_to_target(filepath, target)
         print(f"\n精简分析：")
         print(f"  预计节省：{result['saved']} 字")
         print(f"  预计字数：{result['final_len']} 字")
