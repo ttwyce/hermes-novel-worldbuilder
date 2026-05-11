@@ -102,12 +102,14 @@ python3 scripts/init_tracking.py "新小说名"
 | `init_tracking.py` | 初始化新小说数据库（通用） |
 | `tracking_db.py` | SQLite 数据库操作模块（CRUD） |
 | `export_md.py` | 从数据库导出 6 个 Markdown 文件（含伏笔钩子追踪、世界状态） |
-| `post_chapter.py` | 主入口：写入章节 + 角色检测 + 伏笔 + 世界状态 + 导出全部 MD + 验证 |
-> ⚠️ **角色检测只更新已知角色**：`post_chapter.py` 的 `detect_and_update_characters()` 只更新 `character_arcs` 表中已存在的角色，**不会注册新角色**。新角色第一次出场后，`get_context.py` 看不到他们的出场间隔（因为数据库里没有这条记录）。
-> 女主/配角必须先手动注册，才能被正确追踪。
-| `get_context.py` | 从数据库生成章节上下文（含世界状态/角色状态/伏笔/衔接提示） |
+| `post_chapter.py` | 主入口：写入章节 + 角色检测（自动注册）+ 伏笔 + 世界状态 + 导出全部 MD + 验证 |
+> ⚠️ **角色自动注册**：`post_chapter.py` 的 `detect_and_update_characters()` 会自动检测未注册的新角色并写入 `character_arcs` 表（弧光类型=待设定）。写完章后请检查 `大纲/角色弧光追踪.md`，修正误注册角色的名字并补充弧光类型。 |
+> ⚠️ **角色检测只更新已知角色**：自动注册只处理新角色，已注册角色的 `current_chapter` 追踪不受影响。 |
+| `get_context.py` | 从数据库生成章节上下文（含世界状态/角色状态/伏笔/RAG参考/衔接提示） |
 | `verify_chapter.py` | 章节验证脚本（字数） |
 | `check_transition.py` | 章节衔接检查（场景/时间/情绪/钩子） |
+| `rag_indexer.py` | RAG 向量化索引（每写完章自动调用，也可手动：`python3 rag_indexer.py "书名"`） |
+| `rag_retriever.py` | RAG 检索模块（供 get_context 调用，也可单独使用） |
 
 **导出的 MD 文件（6个）**：
 - `进度看板.md` — 章节进度 + 当前世界状态摘要
@@ -116,6 +118,48 @@ python3 scripts/init_tracking.py "新小说名"
 - `角色弧光追踪.md` — 角色成长轨迹 + 关键转折点
 - `伏笔钩子追踪.md` — 活跃伏笔 + 已解伏笔（**新增**）
 - `世界状态.md` — 世界核心状态（**新增**）
+
+---
+
+## RAG 向量检索系统
+
+**安装依赖**：
+```bash
+pip install chromadb sentence-transformers
+```
+
+**数据流**：
+```
+post_chapter.py → rag_indexer → ChromaDB（向量化存储）
+                                ↓
+get_context.py → rag_retriever → RAG 写作参考（注入上下文）
+```
+
+**工作原理**：
+- 每写完一章，`post_chapter.py` 自动调用 `rag_indexer` 将本章内容切成 chunks，向量化存入 ChromaDB（持久化在 `.tracking/chroma_db/`）
+- 写新章前，`get_context.py` 自动检索：
+  - 久未互动的角色 → 他们在历史章节中的相关段落
+  - 上章核心事件关键词 → 类似场景的参考写法
+- `get_context` 输出末尾的 `【RAG 写作参考】` 区块包含这些历史片段
+
+**存储路径**：`~/novels/书名/.tracking/chroma_db/`
+
+**手动命令**：
+```bash
+# 重建全书籍节索引
+python3 scripts/rag_indexer.py "书名"
+
+# 只索引第5章
+python3 scripts/rag_indexer.py "书名" 5
+
+# 查看索引状态
+python3 scripts/rag_indexer.py "书名" --stats
+
+# 单独检索（调试用）
+python3 scripts/rag_retriever.py "书名" "赵婉清" --n 3
+```
+
+**注意**：`chromadb` 和 `sentence-transformers` 是可选依赖。未安装时 RAG 功能静默跳过，追踪系统正常工作。
 
 ---
 

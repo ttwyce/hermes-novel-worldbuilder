@@ -152,6 +152,54 @@ def generate_context(book_name: str, chapter_num: int) -> str:
     lines.append(format_active_plots(db_path, chapter_num))
     lines.append("")
     
+    # RAG 写作参考（基于历史章节的相关段落）
+    try:
+        import rag_retriever
+        
+        rag_lines = ["【RAG 写作参考】"]
+        rag_has_content = False
+        
+        # 1. 久未互动的角色 → 检索他们之前的情节
+        for gap, name, arc in least_recent[:3]:
+            if gap >= 3:
+                refs = rag_retriever.retrieve(book_name, name, n=2, exclude_chapter=chapter_num)
+                if refs:
+                    rag_has_content = True
+                    rag_lines.append(f"\n  关于「{name}」的历史片段：")
+                    for r in refs[:2]:
+                        text = r['text']
+                        if len(text) > 150:
+                            text = text[:150] + "..."
+                        rag_lines.append(f"    第{r['chapter']}章：{text}")
+        
+        # 2. 上章核心事件关键词 → 检索相关场景
+        if prev_ch >= 1:
+            chapter = tracking_db.get_chapter(db_path, prev_ch)
+            if chapter:
+                event = chapter.get('core_event', '')
+                if event:
+                    # 提取关键词（去掉常见字）
+                    keywords = [k for k in event.replace('主角', '').replace('第', '').split('，') if len(k) >= 2]
+                    for kw in keywords[:2]:
+                        refs = rag_retriever.retrieve(book_name, kw, n=1, exclude_chapter=chapter_num)
+                        if refs:
+                            rag_has_content = True
+                            text = refs[0]['text']
+                            if len(text) > 120:
+                                text = text[:120] + "..."
+                            rag_lines.append(f"\n  场景参考「{kw}」（第{refs[0]['chapter']}章）：{text}")
+        
+        if rag_has_content:
+            lines.extend(rag_lines)
+            lines.append("")
+        else:
+            lines.append("【RAG 写作参考】")
+            lines.append("  ℹ️ 首次运行请先建立索引：post_chapter 后自动索引历史章节")
+            lines.append("")
+    except Exception:
+        # RAG 不可用时静默跳过
+        pass
+    
     # 章节衔接提示
     prev_ch = chapter_num - 1
     if prev_ch >= 1:

@@ -10,8 +10,10 @@ post_chapter.py — 子代理章节写完后自动更新追踪文件（通用版
 流程：
   1. 写入 SQLite 数据库（章节 + 角色互动）
   2. 添加伏笔钩子（如果提供了）
-  3. 导出所有 Markdown 追踪文件
-  4. 验证导出结果
+  3. 更新世界状态（如果提供了 --world-state）
+  4. 导出所有 Markdown 追踪文件
+  5. RAG 索引（自动建立向量索引）
+  6. 验证导出结果
 """
 
 import sys
@@ -224,7 +226,15 @@ def main():
     log("导出 Markdown 文件...")
     export_md.export_all(book_name, current_chapter=chapter_num)
     
-    # 7. 验证导出结果
+    # 7. RAG 索引（自动向量化本章内容）
+    try:
+        import rag_indexer
+        log("建立 RAG 向量索引...")
+        result = rag_indexer.index_chapter(book_name, chapter_num=chapter_num)
+    except Exception as e:
+        print(f"  ⚠️ RAG 索引失败（可忽略）: {e}")
+    
+    # 8. 验证导出结果
     print("\n=== 验证追踪文件 ===")
     outline_dir = os.path.join(novel_root, "大纲")
     for fname in ["进度看板.md", "剧情线追踪.md", "编年史.md", "角色弧光追踪.md", "伏笔钩子追踪.md", "世界状态.md"]:
