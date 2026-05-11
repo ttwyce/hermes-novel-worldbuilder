@@ -14,7 +14,7 @@ rag_retriever.py — RAG 检索模块
 
 import sys
 import os
-import re
+
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tracking_db
@@ -42,8 +42,10 @@ def get_chroma_path(book_name: str) -> str:
 
 
 def get_collection_name(book_name: str) -> str:
-    safe = re.sub(r'[^a-zA-Z0-9_\u4e00-\u9fa5]', '_', book_name)
-    return f"novel_{safe[:30]}"
+    """collection 名称（哈希处理，支持中文字符书名）"""
+    import hashlib
+    safe = hashlib.sha256(book_name.encode()).hexdigest()[:16]
+    return f"novel_{safe}"
 
 
 def get_chroma_client(book_name: str):

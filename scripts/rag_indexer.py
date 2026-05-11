@@ -47,11 +47,10 @@ def get_chroma_path(book_name: str) -> str:
 
 
 def get_collection_name(book_name: str) -> str:
-    """collection 名称（书名做前缀，避免跨书冲突）"""
-    # collection 名只允许字母数字下划线
-    import re
-    safe = re.sub(r'[^a-zA-Z0-9_\u4e00-\u9fa5]', '_', book_name)
-    return f"novel_{safe[:30]}"
+    """collection 名称（哈希处理，支持中文字符书名）"""
+    import hashlib
+    safe = hashlib.sha256(book_name.encode()).hexdigest()[:16]
+    return f"novel_{safe}"
 
 
 # ==================== 文本切分 ====================
