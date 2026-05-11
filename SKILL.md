@@ -613,6 +613,8 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 
 每次技能完整性检查，按以下步骤执行 → 详见 `references/skill-audit-procedure.md`（含执行顺序/命令/常见遗漏点）
 
+> 💡 **SQLite跟踪系统专项审计**：数据库的表级三链路审计（写入→读取→导出）→ 详见 `references/tracking-system-audit.md`
+
 ### 快速审计命令（5步）
 
 ### 1. 硬编码扫描（导出函数）
@@ -713,6 +715,7 @@ rm -rf ~/novels/审计测试
 ### 审计与规范
 - `references/audit-checklist.md` — 全面检查清单（5类必检项 + 常见遗漏表）
 - `references/skill-audit-procedure.md` — 审计执行流程（顺序 + 每轮检查内容）
+- `references/tracking-system-audit.md` — **SQLite跟踪系统审计方法论**（三链路检查：写入→读取→导出）← 重要
 
 ---
 

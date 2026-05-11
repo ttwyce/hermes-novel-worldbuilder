@@ -35,24 +35,93 @@ def get_all_char_names(db_path: str) -> dict:
     return {arc['name']: arc['id'] for arc in arcs}
 
 def detect_and_update_characters(db_path: str, chapter_path: str, chapter_num: int) -> list:
-    """从章节文件检测出现的角色，并更新它们的最新互动章节"""
+    """从章节文件检测出现的角色，并更新它们的最新互动章节
+    
+    自动注册：发现未在 character_arcs 中的角色时，自动注册（弧光类型=待设定）
+    """
     if not chapter_path or not os.path.exists(chapter_path):
         return []
     
-    char_names = get_all_char_names(db_path)
-    if not char_names:
-        return []
+    char_names = get_all_char_names(db_path)  # {name: id}
     
     with open(chapter_path, 'r', encoding='utf-8') as f:
         text = f.read()
     
     found = []
+    newly_registered = []
+    
+    # 已注册角色：检测到则更新最新互动章节
     for name, char_id in char_names.items():
         if name in text and char_id not in found:
             found.append(char_id)
             log(f"检测到角色: {name} ({char_id})")
             tracking_db.touch_character(db_path, char_id, chapter_num)
+    
+    # 自动注册新角色：扫描对话段落中疑似新角色名
+    # 匹配模式：名字（2-4字）紧跟对话引导语
+    # 注意：引导语必须紧跟名字（如"赵婉清道"），中间有其他字（如"赵婉清笑着"）会误匹配
+    import re
+    # 动词列表：严格使用"紧跟名字后"的引导语，不含副词/形容词
+    dialogue_pattern = re.compile(
+        r'([\u4e00-\u9fa5]{2,4})(?:'
+        r'道|说|问|答|喊|叫|应|回|叹|'
+        r'低声道|低声说|悄声道|沉声道|朗声道|'
+        r'傲然道|淡然道|缓缓道|'
+        r'冷笑|冷哼|怒道|喜道)'
+    )
+    excluded_words = {
+        '说道', '问道', '答道', '一个', '这个', '那个', '什么', '怎么', '如此', '这时',
+        '大家', '有人', '边上', '转身', '微微', '突然', '连忙', '急忙', '众人', '此时',
+        '一旁', '一边', '两人', '三人', '点头', '摇头', '笑着', '忙道', '便道', '人道',
+        '她轻', '她微', '她笑', '他轻', '他微', '他笑', '它轻', '它微',
+        '低声', '悄声', '沉声', '朗声', '傲然', '淡然', '缓缓', '冷笑', '冷哼', '怒道', '喜道',
+        '起来', '起来说', '起来道', '孩站', '一个女',
+    }
+    mentioned = set()
+    for m in dialogue_pattern.finditer(text):
+        name = m.group(1)
+        if name not in excluded_words and len(name) >= 2:
+            mentioned.add(name)
+    
+    # 自动注册未在数据库中的角色
+    for name in mentioned:
+        if name not in char_names:
+            # 自动分配ID：用下一个可用序号
+            existing_ids = [arc['id'] for arc in tracking_db.get_all_character_arcs(db_path)]
+            next_id = _get_next_char_id(existing_ids)
+            
+            arc = {
+                'id': next_id,
+                'name': name,
+                'arc_type': '待设定',
+                'start_state': '待设定',
+                'current_state': '待设定',
+                'current_chapter': chapter_num,
+                'key_moments': []
+            }
+            tracking_db.init_character_arcs(db_path, [arc])
+            newly_registered.append(name)
+            log(f"🌱 自动注册新角色: {name} ({next_id})")
+            char_names[name] = next_id  # 避免重复注册
+            found.append(next_id)
+    
+    if newly_registered:
+        print(f"  → 新角色已自动注册，请后续在角色弧光追踪.md中补充弧光类型和状态信息")
+    
     return found
+
+def _get_next_char_id(existing_ids: list) -> str:
+    """生成下一个可用角色ID（格式：A01, A02, ... A99, B01, ...）"""
+    nums = []
+    for rid in existing_ids:
+        try:
+            nums.append(int(rid[1:]))  # "A03" -> 3
+        except (ValueError, IndexError):
+            pass
+    next_num = (max(nums) + 1) if nums else 1
+    if next_num <= 99:
+        return f"A{next_num:02d}"
+    return f"B{next_num-99:02d}"
 
 def update_world_state(db_path: str, world_state_str: str) -> None:
     """解析并写入世界状态
