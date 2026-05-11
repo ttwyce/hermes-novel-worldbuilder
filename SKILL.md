@@ -26,7 +26,7 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 | 创建小说目录+数据库 | `python3 scripts/init_novel.py 「书名」 150 3000 --主角 主角名` |
 | 查看章节上下文 | `python3 scripts/get_context.py 「书名」 5` |
 | 验证章节字数 | `python3 scripts/verify_chapter.py 第5章.md 3000` |
-| 更新追踪文件 | `python3 scripts/post_chapter.py 「书名」 5 3000 「核心事件」` |
+|| 更新追踪文件（+伏笔+世界状态） | `python3 scripts/post_chapter.py 「书名」 5 3000 「核心事件」 「伏笔」 --world-state "境界:炼气期"` |
 | 导出追踪文件 | `python3 scripts/export_md.py 「书名」` |
 | 检查章节衔接 | `python3 scripts/check_transition.py 「书名」 6` |
 
@@ -101,13 +101,21 @@ python3 scripts/init_tracking.py "新小说名"
 |------|------|
 | `init_tracking.py` | 初始化新小说数据库（通用） |
 | `tracking_db.py` | SQLite 数据库操作模块（CRUD） |
-| `export_md.py` | 从数据库导出 Markdown 文件 |
-| `post_chapter.py` | 主入口：写入数据库 + 角色检测 + 导出 MD + 验证 |
+| `export_md.py` | 从数据库导出 6 个 Markdown 文件（含伏笔钩子追踪、世界状态） |
+| `post_chapter.py` | 主入口：写入章节 + 角色检测 + 伏笔 + 世界状态 + 导出全部 MD + 验证 |
 > ⚠️ **角色检测只更新已知角色**：`post_chapter.py` 的 `detect_and_update_characters()` 只更新 `character_arcs` 表中已存在的角色，**不会注册新角色**。新角色第一次出场后，`get_context.py` 看不到他们的出场间隔（因为数据库里没有这条记录）。
 > 女主/配角必须先手动注册，才能被正确追踪。
-| `get_context.py` | 从数据库生成章节上下文（通用） |
+| `get_context.py` | 从数据库生成章节上下文（含世界状态/角色状态/伏笔/衔接提示） |
 | `verify_chapter.py` | 章节验证脚本（字数） |
 | `check_transition.py` | 章节衔接检查（场景/时间/情绪/钩子） |
+
+**导出的 MD 文件（6个）**：
+- `进度看板.md` — 章节进度 + 当前世界状态摘要
+- `剧情线追踪.md` — 每章核心事件
+- `编年史.md` — 按时间线排列的事件
+- `角色弧光追踪.md` — 角色成长轨迹 + 关键转折点
+- `伏笔钩子追踪.md` — 活跃伏笔 + 已解伏笔（**新增**）
+- `世界状态.md` — 世界核心状态（**新增**）
 
 ---
 
@@ -140,8 +148,8 @@ python3 scripts/init_tracking.py "新小说名"
 ④ 主Agent验证：python3 verify_chapter.py 第X章.md 3000
    - 合格（2400-3600字）→ ⑤
    - 不合格 → 重新启动子代理重写 → 重复④
-⑤ 主Agent更新追踪：python3 post_chapter.py "书名" X Y "核心事件"
-⑥ 主Agent验证追踪文件 → 启动下一章子代理
+⑤ 主Agent更新追踪：python3 post_chapter.py "书名" X Y "核心事件" ["伏笔钩子"] [--world-state "境界:炼气期,地点:青云峰"]
+⑥ 主Agent验证追踪文件（进度看板/剧情线/编年史/角色弧光/伏笔钩子/世界状态）→ 启动下一章子代理
 ```
 
 **子代理 prompt 模板**：
@@ -701,6 +709,10 @@ rm -rf ~/novels/审计测试
   > ⚠️ `trim_to_target()` 只分析不修改；`auto_trim()` 才实际修改文件
 - `scripts/migrate_to_sqlite.py` — 通用迁移脚本（历史数据）
 - `templates/chapter-template.md` — 章节模板
+
+### 审计与规范
+- `references/audit-checklist.md` — 全面检查清单（5类必检项 + 常见遗漏表）
+- `references/skill-audit-procedure.md` — 审计执行流程（顺序 + 每轮检查内容）
 
 ---
 

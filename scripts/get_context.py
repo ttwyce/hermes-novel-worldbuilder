@@ -106,6 +106,7 @@ def generate_context(book_name: str, chapter_num: int) -> str:
     
     chapters = tracking_db.get_all_chapters(db_path)
     arcs = tracking_db.get_all_character_arcs(db_path)
+    ws = tracking_db.get_all_world_state(db_path)
     
     # 基本信息
     lines = [
@@ -116,6 +117,13 @@ def generate_context(book_name: str, chapter_num: int) -> str:
         get_prev_chapter_info(db_path, chapter_num),
         "",
     ]
+    
+    # 世界状态
+    if ws:
+        lines.append("【当前世界状态】")
+        for k, v in ws.items():
+            lines.append(f"  {k}：{v}")
+        lines.append("")
     
     # 当前各角色状态（排除主角）
     main_chars = [a for a in arcs if a['id'] != 'A01'][:5]

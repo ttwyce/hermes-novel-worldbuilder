@@ -16,6 +16,7 @@ post_chapter.py — 子代理章节写完后自动更新追踪文件（通用版
 
 import sys
 import os
+import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tracking_db
@@ -53,6 +54,21 @@ def detect_and_update_characters(db_path: str, chapter_path: str, chapter_num: i
             tracking_db.touch_character(db_path, char_id, chapter_num)
     return found
 
+def update_world_state(db_path: str, world_state_str: str) -> None:
+    """解析并写入世界状态
+    
+    格式: "主角境界:炼气期,当前地点:青云峰"
+    """
+    if not world_state_str:
+        return
+    for item in world_state_str.split(","):
+        item = item.strip()
+        if ":" not in item:
+            continue
+        key, value = item.split(":", 1)
+        tracking_db.set_world_state(db_path, key.strip(), value.strip())
+        log(f"世界状态: {key.strip()} = {value.strip()}")
+
 def find_chapter_file(novel_root: str, chapter_num: int) -> str:
     """在正文章节目录中查找章节文件"""
     for root, dirs, files in os.walk(novel_root):
@@ -62,16 +78,25 @@ def find_chapter_file(novel_root: str, chapter_num: int) -> str:
     return None
 
 def main():
-    if len(sys.argv) < 5:
-        print("用法: python3 post_chapter.py <书名> <章节号> <字数> \"<核心事件>\" [章节文件路径] [伏笔]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='更新小说追踪数据库')
+    parser.add_argument('book_name', help='小说名称')
+    parser.add_argument('chapter_num', type=int, help='章节号')
+    parser.add_argument('char_count', type=int, help='字数')
+    parser.add_argument('core_event', help='核心事件（引号包裹）')
+    parser.add_argument('chapter_path', nargs='?', default=None, help='章节文件路径（可选）')
+    parser.add_argument('plot_hook', nargs='?', default=None, help='伏笔钩子（可选）')
+    parser.add_argument('--world-state', dest='world_state', default=None,
+                        help='世界状态，格式: "境界:炼气期,地点:青云峰"')
     
-    book_name = sys.argv[1]
-    chapter_num = int(sys.argv[2])
-    char_count = int(sys.argv[3])
-    core_event = sys.argv[4]
-    chapter_path = sys.argv[5] if len(sys.argv) > 5 else None
-    plot_hook = sys.argv[6] if len(sys.argv) > 6 else None
+    args = parser.parse_args()
+    
+    book_name = args.book_name
+    chapter_num = args.chapter_num
+    char_count = args.char_count
+    core_event = args.core_event
+    chapter_path = args.chapter_path
+    plot_hook = args.plot_hook
+    world_state_str = args.world_state
     
     print(f"\n📝 更新追踪文件")
     print(f"  书名: {book_name}")
@@ -80,6 +105,8 @@ def main():
     print(f"  事件: {core_event}")
     if plot_hook:
         print(f"  伏笔: {plot_hook}")
+    if world_state_str:
+        print(f"  世界状态: {world_state_str}")
     
     # 获取数据库路径
     try:
@@ -120,19 +147,23 @@ def main():
         hook_id = tracking_db.add_plot_hook(db_path, chapter_num, plot_hook)
         log(f"添加伏笔: 「{plot_hook}」（ID: {hook_id}）")
     
-    # 5. 导出全部 Markdown
-    log("导出 Markdown 文件...")
-    export_md.export_all(book_name)
+    # 5. 更新世界状态（如果提供了）
+    if world_state_str:
+        update_world_state(db_path, world_state_str)
     
-    # 6. 验证导出结果
+    # 6. 导出全部 Markdown
+    log("导出 Markdown 文件...")
+    export_md.export_all(book_name, current_chapter=chapter_num)
+    
+    # 7. 验证导出结果
     print("\n=== 验证追踪文件 ===")
     outline_dir = os.path.join(novel_root, "大纲")
-    for fname in ["进度看板.md", "剧情线追踪.md", "编年史.md"]:
+    for fname in ["进度看板.md", "剧情线追踪.md", "编年史.md", "角色弧光追踪.md", "伏笔钩子追踪.md", "世界状态.md"]:
         fpath = os.path.join(outline_dir, fname)
         if os.path.exists(fpath):
             with open(fpath, 'r', encoding='utf-8') as f:
                 content = f.read()
-            if f"第{chapter_num}章" in content:
+            if f"第{chapter_num}章" in content or fname in ["伏笔钩子追踪.md", "世界状态.md"]:
                 print(f"  ✅ {fname}")
             else:
                 print(f"  ❌ {fname}: 未找到第{chapter_num}章！")

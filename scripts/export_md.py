@@ -64,6 +64,7 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
         "",
     ])
     
+    marker = "## 待处理问题（BLOCKERS）"
     if existing_text is None:
         # 无模板，纯生成
         lines = [
@@ -81,15 +82,14 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
             "",
             f"- **更新时间**：{datetime.now().strftime('%Y-%m-%d')}",
         ]
+        lines_text = '\n'.join(lines)
+    elif marker in existing_text:
+        # 在"## 待处理问题"前插入章节进度
+        parts = existing_text.split(marker, 1)
+        lines_text = parts[0].rstrip('\n') + '\n\n' + '\n'.join(chapter_lines) + '\n\n---\n\n' + marker + parts[1]
     else:
-        # 有模板：在"## 待处理问题"前插入章节进度
-        marker = "## 待处理问题（BLOCKERS）"
-        if marker in existing_text:
-            parts = existing_text.split(marker)
-            lines_text = parts[0].rstrip('\n') + '\n\n' + '\n'.join(chapter_lines) + '\n\n---\n\n' + marker + parts[1]
-        else:
-            # 模板格式不符，直接替换末尾
-            lines_text = existing_text + '\n\n' + '\n'.join(chapter_lines)
+        # 模板格式不符，直接追加
+        lines_text = existing_text.rstrip('\n') + '\n\n' + '\n'.join(chapter_lines)
     
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as f:
@@ -228,10 +228,130 @@ def export_arc_tracking(db_path: str, out_path: str, novel_name: str) -> None:
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
 
+# ==================== 导出伏笔钩子追踪 ====================
+
+def export_plot_hooks(db_path: str, out_path: str, book_name: str = None) -> None:
+    """导出伏笔钩子追踪.md（新增）"""
+    plots = tracking_db.get_active_plots(db_path)
+    
+    # 同时读取已解决的伏笔
+    conn = tracking_db.get_connection(db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM plot_hooks WHERE status='resolved' ORDER BY resolved_chapter")
+    resolved = [dict(row) for row in cur.fetchall()]
+    conn.close()
+    
+    status_names = {
+        'active': '⏳ 进行中',
+        'foreshadow': '🔮 伏笔中',
+        'pending': '📌 待触发',
+        'resolved': '✅ 已解开',
+    }
+    
+    lines = [
+        "# 伏笔钩子追踪",
+        "",
+        f"> 记录全书伏笔与回收情况 | 使用 post_chapter.py 的 [伏笔] 参数添加",
+        "",
+        "---",
+        "",
+        "## 活跃伏笔",
+        "",
+    ]
+    
+    if plots:
+        lines.extend([
+            "| ID | 章节 | 伏笔内容 | 持续时间 |",
+            "|----|------|---------|---------|",
+        ])
+        for p in plots:
+            age = 0  # 简化，不计算了
+            lines.append(f"| {p['id']} | 第{p['chapter_id']}章 | {p['plot']} | {p['created_at'][:10]} |")
+    else:
+        lines.append("_暂无活跃伏笔_")
+    
+    lines.extend([
+        "",
+        "---",
+        "",
+        "## 已解伏笔",
+        "",
+    ])
+    
+    if resolved:
+        lines.extend([
+            "| ID | 埋下章节 | 解开章节 | 伏笔内容 |",
+            "|----|---------|---------|---------|",
+        ])
+        for p in resolved:
+            lines.append(f"| {p['id']} | 第{p['chapter_id']}章 | 第{p['resolved_chapter']}章 | {p['plot']} |")
+    else:
+        lines.append("_暂无已解伏笔_")
+    
+    lines.extend([
+        "",
+        "---",
+        f"**更新时间**：{datetime.now().strftime('%Y-%m-%d')}",
+    ])
+    
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+
+# ==================== 导出世界状态 ====================
+
+def export_world_state(db_path: str, out_path: str, book_name: str = None) -> str:
+    """导出世界状态.md（新增），返回摘要供进度看板使用"""
+    ws = tracking_db.get_all_world_state(db_path)
+    
+    lines = [
+        "# 世界状态",
+        "",
+        f"> 记录故事核心世界状态变化 | 由 post_chapter.py --world-state 参数写入",
+        "",
+        "---",
+        "",
+        "## 当前世界状态",
+        "",
+    ]
+    
+    if ws:
+        lines.extend([
+            "| 状态项 | 当前值 |",
+            "|--------|--------|",
+        ])
+        for k, v in ws.items():
+            lines.append(f"| {k} | {v} |")
+    else:
+        lines.append("_暂无世界状态记录_")
+        lines.append("")
+        lines.append("提示：使用 `python3 post_chapter.py \"书名\" N 字数 \"事件\" --world-state \"主角境界:炼气期,当前地点:青云峰\"` 添加")
+    
+    lines.extend([
+        "",
+        "---",
+        f"**更新时间**：{datetime.now().strftime('%Y-%m-%d')}",
+    ])
+    
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+    
+    # 返回摘要字符串
+    if ws:
+        items = [f"**{k}**：{v}" for k, v in ws.items()]
+        return "；".join(items)
+    return None
+
 # ==================== 一键导出全部 ====================
 
-def export_all(book_name: str) -> None:
-    """导出全部追踪文件"""
+def export_all(book_name: str, current_chapter: int = None) -> None:
+    """导出全部追踪文件
+    
+    Args:
+        book_name: 书名
+        current_chapter: 当前章节号（用于显示在进度看板的'当前世界状态'中）
+    """
     db_path = tracking_db.get_db_path(book_name)
     novel_root = tracking_db.find_novel_root(book_name)
     outline_dir = os.path.join(novel_root, "大纲")
@@ -250,7 +370,56 @@ def export_all(book_name: str) -> None:
     export_arc_tracking(db_path, os.path.join(outline_dir, "角色弧光追踪.md"), book_name)
     print("  ✅ 角色弧光追踪.md")
     
+    export_plot_hooks(db_path, os.path.join(outline_dir, "伏笔钩子追踪.md"), book_name)
+    print("  ✅ 伏笔钩子追踪.md")
+    
+    ws_summary = export_world_state(db_path, os.path.join(outline_dir, "世界状态.md"), book_name)
+    print("  ✅ 世界状态.md")
+    
+    # 更新进度看板的"当前世界状态"区域
+    if current_chapter:
+        _update_progress_board_world_state(
+            os.path.join(outline_dir, "进度看板.md"),
+            ws_summary, current_chapter
+        )
+    
     print("\n🎉 全部导出完成！")
+
+
+def _update_progress_board_world_state(progress_path: str, ws_summary: str, chapter_num: int) -> None:
+    """更新进度看板中的'当前世界状态'区域"""
+    if not os.path.exists(progress_path):
+        return
+    
+    with open(progress_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    marker = "## 当前世界状态"
+    if marker not in content:
+        return
+    
+    # 找到位置，在 marker 后面更新
+    parts = content.split(marker, 1)
+    if len(parts) < 2:
+        return
+    
+    after_marker = parts[1]
+    # 找到下一个 ## 或文件末尾
+    next_header = after_marker.find("\n## ")
+    if next_header > 0:
+        body = after_marker[next_header:]
+    else:
+        body = after_marker
+    
+    if ws_summary:
+        new_state = f"\n\n- **更新时间**：{datetime.now().strftime('%Y-%m-%d')}\n- {ws_summary}\n"
+    else:
+        new_state = f"\n\n- **更新时间**：{datetime.now().strftime('%Y-%m-%d')}\n- _暂无世界状态记录_\n"
+    
+    new_content = parts[0] + marker + new_state + body
+    
+    with open(progress_path, 'w', encoding='utf-8') as f:
+        f.write(new_content)
 
 # ==================== 主函数 ====================
 
