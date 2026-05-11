@@ -66,14 +66,14 @@ python3 /path/to/scripts/init_novel.py "书名"
 
 ### 工作目录路径
 
-**正确路径：** `/home/admin/hermes/novels`
+**正确路径：** `/home/admin/novels`
 
 常见错误：
 ```bash
-# ❌ 错误：把 admin 和 hermes 之间的 / 漏掉了
-cd /home/admin.hermes/novels
+# ❌ 错误：把 admin 和 novel 之间的 / 漏掉了
+cd /home/admin.novels
 
 # ✅ 正确
-cd /home/admin/hermes/novels
+cd /home/admin/novels
 python3 /home/admin/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py "书名"
 ```

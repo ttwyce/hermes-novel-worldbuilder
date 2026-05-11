@@ -131,12 +131,12 @@ patch(第21章第四段：进入四强预告)
 
 **错误做法**：
 ```bash
-# 在 terminal 工具中设置 workdir="/home/admin/hermes/novels/时光缓缓" ← 失败
+# 在 terminal 工具中设置 workdir="/home/admin/novels/时光缓缓" ← 失败
 ```
 
 **正确做法**：
 ```bash
-cat > "/home/admin/hermes/novels/时光缓缓/正文/卷一_铺垫与启程/第3章.md" << 'EOF'
+cat > "/home/admin/novels/时光缓缓/正文/卷一_铺垫与启程/第3章.md" << 'EOF'
 # 第3章
 ...
 EOF

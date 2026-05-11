@@ -183,7 +183,7 @@ def main():
         print(context)
     except FileNotFoundError as e:
         print(f"错误: 找不到小说目录")
-        print(f"  搜索: ~/hermes/novels/{book_name}")
+        print(f"  搜索: ~/novels/{book_name}")
         print(f"  提示: 先运行 python3 init_tracking.py \"{book_name}\" 初始化")
         sys.exit(2)
     except Exception as e:

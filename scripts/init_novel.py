@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 def create_novel_structure(novel_name: str, base_dir: str = None) -> str:
     """创建单本小说的完整目录结构，返回根目录路径"""
     if base_dir is None:
-        base_dir = os.path.expanduser("~/hermes/novels")
+        base_dir = os.path.expanduser("~/novels")
 
     novel_dir = os.path.join(base_dir, novel_name)
 

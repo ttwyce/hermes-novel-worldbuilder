@@ -5,7 +5,7 @@
 ## 完整目录结构
 
 ```
-~/hermes/novels/
+~/novels/
 └── 《书名》/
     ├── SKILL.md                  # 从技能复制来的创作说明
     ├── README.md                 # 本书概览索引

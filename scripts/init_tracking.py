@@ -110,7 +110,7 @@ def main():
         
     except FileNotFoundError as e:
         print(f"错误: {e}")
-        print("提示：确保小说目录存在于 ~/hermes/novels/")
+        print("提示：确保小说目录存在于 ~/novels/")
         sys.exit(2)
     except Exception as e:
         print(f"错误: {e}")

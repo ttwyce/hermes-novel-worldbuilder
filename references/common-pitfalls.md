@@ -162,8 +162,8 @@ grep "第X章" 大纲/剧情线追踪.md
 
 **验证方法**：当看到可疑的任务清单时，立即用 `ls` 验证：
 ```bash
-ls ~/hermes/novels/项目名/正文/
-ls ~/hermes/novels/项目名/正文/卷一_XXX/
+ls ~/novels/项目名/正文/
+ls ~/novels/项目名/正文/卷一_XXX/
 ```
 
 **正确做法**：

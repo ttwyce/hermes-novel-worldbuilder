@@ -86,7 +86,9 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 **⚠️ 场景检查工具适用性**：check_transition.py 的 scene_keywords 仅当小说明确使用修仙/校园常见场景关键词时才有效。如果新小说使用独特场景名，可能无法检测。此功能不阻断使用，但结果需人工核对。
 
 ⚠️ **导出函数设计铁律**：所有导出函数的输出内容必须从数据库读取，严禁硬编码任何小说特定内容（书名/角色名/章节数/目标字数等）在函数内部的默认数据里。如果需要默认值，从数据库动态计算或用函数参数传入。
-> 历史Bug：export_progress_board() 曾硬编码 "嘴强剑仙：我的吐槽能杀人" 作为书名、150章/45万字作为目标，导致新小说导出时书名和目标永远错误。修复方式是全部从数据库读取或接受参数传入。
+> **导出函数必须保留模板结构**：导出函数（如 `export_progress_board`）在文件已存在时，不能覆盖整个模板文件，而应在模板特定位置插入或替换动态内容，保留模板中的固定结构（如 `## 基本参数`、`## 总体进度`、`## 分卷进度` 等区块）。
+> 正确做法：读取现有文件，在 `## 待处理问题（BLOCKERS）` 标记前插入动态生成的章节进度表，保留标记之后的内容（如 `## 待处理问题`、`## 本月目标`）。
+> 历史Bug：export_progress_board 曾每次覆盖整个模板，导致 `基本参数`/`总体进度`/`分卷进度` 等精心设计的区块全部丢失。修复方式是在模板标记处做增量插入而非全量覆盖。
 
 **新小说初始化**：
 ```bash
@@ -101,6 +103,8 @@ python3 scripts/init_tracking.py "新小说名"
 | `tracking_db.py` | SQLite 数据库操作模块（CRUD） |
 | `export_md.py` | 从数据库导出 Markdown 文件 |
 | `post_chapter.py` | 主入口：写入数据库 + 角色检测 + 导出 MD + 验证 |
+> ⚠️ **角色检测只更新已知角色**：`post_chapter.py` 的 `detect_and_update_characters()` 只更新 `character_arcs` 表中已存在的角色，**不会注册新角色**。新角色第一次出场后，`get_context.py` 看不到他们的出场间隔（因为数据库里没有这条记录）。
+> 女主/配角必须先手动注册，才能被正确追踪。
 | `get_context.py` | 从数据库生成章节上下文（通用） |
 | `verify_chapter.py` | 章节验证脚本（字数） |
 | `check_transition.py` | 章节衔接检查（场景/时间/情绪/钩子） |
@@ -309,7 +313,7 @@ tail -3 正文/卷一_XXX/第X章.md
 ## 目录结构
 
 ```
-~/hermes/novels/《书名》/
+~/novels/《书名》/
 ├── 世界观/（世界设定/时代背景/力量体系/世界状态.md）
 ├── 势力/（势力分布.md）
 ├── 人物/
@@ -612,16 +616,45 @@ grep -A5 "scene_keywords = {" scripts/check_transition.py
 # 预期：已清空为注释模板
 ```
 
-### 2. 完整流程测试（新小说名）
+### 2. 模板结构保留验证
 
 ```bash
-rm -rf ~/hermes/novels/审计测试
+# init 后验证模板存在，导出后验证基本参数区块未丢失
+python3 init_novel.py "模板测试" 80 2500 --主角 "林晓" 2>&1 | tail -2
+python3 -c "import sys; sys.path.insert(0,'scripts'); import tracking_db, export_md; db = tracking_db.get_db_path('模板测试'); tracking_db.insert_or_update_chapter(db, 1, '第1章', 300, 'done', '测试'); export_md.export_all('模板测试')"
+grep "## 基本参数" 大纲/进度看板.md
+# 预期：有输出（模板结构保留）
+rm -rf ~/novels/模板测试
+```
+
+### 3. 角色预注册机制
+
+```bash
+# 新角色注册后才能被 get_context 识别
+# 检查 post_chapter.py 是否只更新不注册（已知角色）
+grep -n "detect_and_update_characters\|character_arcs.*WHERE" scripts/post_chapter.py
+# 预期：只更新，不 INSERT 新角色
+```
+
+### 4. trim_utils.py dry_run 语义
+
+```bash
+# trim_to_target(dry_run=True/False) 都只是分析，从不修改文件
+# 实际修改在 auto_trim 中执行（需手动确认）
+grep -n "open.*'w'" scripts/trim_utils.py
+# 预期：只有 auto_trim 中有写文件操作
+```
+
+### 5. 完整流程测试（新小说名）
+
+```bash
+rm -rf ~/novels/审计测试
 python3 init_novel.py "审计测试" 80 2500 --主角 "测试主角"
 # 模拟写1章后导出
 python3 post_chapter.py "审计测试" 1 300 "测试事件"
 head -5 大纲/进度看板.md
 # 验证书名=审计测试，总目标=80章/20万字（不是150/45万字）
-rm -rf ~/hermes/novels/审计测试
+rm -rf ~/novels/审计测试
 ```
 
 ### 3. SKILL.md 引用完整性
@@ -664,10 +697,10 @@ rm -rf ~/hermes/novels/审计测试
 - `scripts/tracking_db.py` — SQLite 数据库操作模块
 - `scripts/export_md.py` — Markdown 导出模块
 - `scripts/post_chapter.py` — 子代理收尾脚本（通用版：数据库+角色检测+导出MD）
-- `scripts/trim_utils.py` — 章节精简工具（分析/精简/自动压缩超长章节）
+| `scripts/trim_utils.py` | 章节精简工具（分析/精简/自动压缩超长章节）<br>⚠️ `trim_to_target()` 只分析不修改；`auto_trim()` 才实际修改文件 |
 - `scripts/migrate_to_sqlite.py` — 嘴强剑仙专用迁移脚本（历史数据）
 - `templates/chapter-template.md` — 章节模板
 
 ---
 
-*最后更新：2026-05-11（trim_utils修复：移除无用备份+明确dry_run语义；SKILL.md新增角色预注册说明）*
+*最后更新：2026-05-11（小说存放路径从 ~/hermes/novels/ 改为 ~/novels/）*

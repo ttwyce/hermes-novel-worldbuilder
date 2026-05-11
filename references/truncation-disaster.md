@@ -42,10 +42,10 @@
 ```bash
 # 验证单个章节（设定3000字/章）
 python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/verify_chapter.py \
-  ~/hermes/novels/摆烂修仙从废物流开始/正文/卷二_对抗与成长/第31章.md 3000
+  ~/novels/摆烂修仙从废物流开始/正文/卷二_对抗与成长/第31章.md 3000
 
 # 批量验证（假设每章3000字，卷二目录）
-for f in ~/hermes/novels/摆烂修仙从废物流开始/正文/卷二_对抗与成长/第*.md; do
+for f in ~/novels/摆烂修仙从废物流开始/正文/卷二_对抗与成长/第*.md; do
   echo "=== $f ==="
   python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/verify_chapter.py "$f" 3000
 done

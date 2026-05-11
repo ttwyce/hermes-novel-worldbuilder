@@ -395,7 +395,7 @@ def update_meta(db_path: str, key: str, value: str) -> None:
 
 def find_novel_root(book_name: str) -> str:
     """查找小说根目录"""
-    novels_dir = os.path.expanduser("~/hermes/novels/")
+    novels_dir = os.path.expanduser("~/novels/")
     for chapter_dir in os.listdir(novels_dir):
         if book_name in chapter_dir:
             return os.path.join(novels_dir, chapter_dir)

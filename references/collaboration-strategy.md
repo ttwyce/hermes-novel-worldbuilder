@@ -52,7 +52,7 @@
 
 如果子代理超时，按以下顺序处理：
 
-1. **检查已生成的文件**：`find ~/hermes/novels/书名/ -type f`
+1. **检查已生成的文件**：`find ~/novels/书名/ -type f`
 2. **确认缺失文件列表**：对照 `references/structure-guide.md` 的「首次创建时必须生成的24个文件」
 3. **主 agent 直接写**：不再用子代理，主 agent 直接用 `write_file` / Python 脚本生成剩余文件
 4. **内容简化策略**：优先保核心文件（设定集.md / 世界观/力量体系.md / 人物/角色注册表.md / 大纲/章节大纲.md），其余可从略
