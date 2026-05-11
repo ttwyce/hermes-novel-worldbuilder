@@ -17,6 +17,7 @@ rag_indexer.py — 章节内容向量化索引
 import sys
 import os
 import re
+import functools
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tracking_db
@@ -135,6 +136,14 @@ def split_chapter_into_chunks(text: str, chunk_size: int = 300, overlap: int = 5
 
 # ==================== 向量化与索引 ====================
 
+@functools.lru_cache(maxsize=1)
+def _get_model():
+    """全局模型缓存（lru_cache 避免重复加载）"""
+    if not SENTENCE_TRANSFORMERS_AVAILABLE:
+        return None
+    return SentenceTransformer('all-MiniLM-L6-v2')
+
+
 def init_chroma_client(db_path: str):
     """初始化 ChromaDB 客户端"""
     if not CHROMADB_AVAILABLE:
@@ -153,8 +162,6 @@ def index_chapter(book_name: str, chapter_num: int = None) -> dict:
     if not SENTENCE_TRANSFORMERS_AVAILABLE:
         raise RuntimeError("sentence-transformers 未安装：pip install sentence-transformers")
     
-    from sentence_transformers import SentenceTransformer
-    
     db_path = get_chroma_path(book_name)
     collection_name = get_collection_name(book_name)
     
@@ -164,7 +171,7 @@ def index_chapter(book_name: str, chapter_num: int = None) -> dict:
         metadata={"book_name": book_name}
     )
     
-    model = SentenceTransformer('all-MiniLM-L6-v2')  # 轻量模型，英文为主，中文尚可
+    model = _get_model()
     
     # 读取章节文件
     novel_root = tracking_db.find_novel_root(book_name)
@@ -228,7 +235,6 @@ def index_chapter(book_name: str, chapter_num: int = None) -> dict:
                 "chapter": ch_num,
                 "chapter_file": os.path.basename(ch_file),
                 "chunk_index": i,
-                "text": c['text'][:100]  # 只存前100字作为预览
             }
             for i, c in enumerate(chunks)
         ]

@@ -89,6 +89,8 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 > **导出函数必须保留模板结构**：导出函数（如 `export_progress_board`）在文件已存在时，不能覆盖整个模板文件，而应在模板特定位置插入或替换动态内容，保留模板中的固定结构（如 `## 基本参数`、`## 总体进度`、`## 分卷进度` 等区块）。
 > 正确做法：读取现有文件，在 `## 待处理问题（BLOCKERS）` 标记前插入动态生成的章节进度表，保留标记之后的内容（如 `## 待处理问题`、`## 本月目标`）。
 > 历史Bug：export_progress_board 曾每次覆盖整个模板，导致 `基本参数`/`总体进度`/`分卷进度` 等精心设计的区块全部丢失。修复方式是在模板标记处做增量插入而非全量覆盖。
+> 
+> 另一历史Bug（2026-05-11）：`lines_text` 变量在 `if/elif/else` 分支中未被正确赋值导致 `UnboundLocalError`。根因：`existing_text is None` 分支内用 `lines = [...]`（列表）而非 `lines_text`（字符串），且 `elif marker in existing_text` 在 `existing_text is None` 分支之后但 `marker` 变量定义位置不对。修复方式：统一使用 `lines_text` 作为最终字符串变量，确保所有分支都有赋值。
 
 **新小说初始化**：
 ```bash
@@ -125,7 +127,8 @@ python3 scripts/init_tracking.py "新小说名"
 
 **安装依赖**：
 ```bash
-pip install chromadb sentence-transformers
+# pip 不可用时用 uv
+uv pip install chromadb sentence-transformers
 ```
 
 **数据流**：
@@ -160,6 +163,43 @@ python3 scripts/rag_retriever.py "书名" "赵婉清" --n 3
 ```
 
 **注意**：`chromadb` 和 `sentence-transformers` 是可选依赖。未安装时 RAG 功能静默跳过，追踪系统正常工作。
+
+**写入时自动发生的事**：
+
+每运行一次 `post_chapter.py`：
+1. 写入 SQLite ✅
+2. 导出 MD ✅
+3. **自动建立 RAG 向量索引**（静默，出错不影响主流程）
+
+**读取时自动发生的事**（`get_context.py`）：
+
+运行 `get_context.py` 时，在 `【积压伏笔】` 后 / `【衔接提示】` 前注入 `【RAG 写作参考】`：
+- 久未互动角色（gap≥3章）→ 先输出 **角色弧光结构化信息**（从 SQLite 读取），再检索正文中的段落
+- 上章核心事件关键词 → 检索类似场景的正文参考
+
+**输出格式示例**：
+```
+【RAG 写作参考】
+
+  【赵婉清】
+  角色名：赵婉清
+  弧光类型：温柔学姐型
+  当前状态：刚接手新生辅导员，对陆天印象不错
+  上次互动：第1章（迎新会初次见面）
+  历史片段：
+    第2章：赵婉清微微一笑...
+
+  【陈朵朵】
+  角色名：陈朵朵
+  弧光类型：待设定
+  当前状态：不明
+  上次互动：尚未出场
+```
+
+**架构说明**：
+- 角色弧光结构化数据（`arc_type`/`current_state`/`key_moments`）**存 SQLite 不进向量库**。向量库只索引正文文本 chunks。
+- `get_context` 输出的角色信息来自 SQLite（精准查询），历史文字段落来自 ChromaDB（语义检索）。两者互补。
+- `get_collection_name()` 使用 SHA256 哈希生成 collection name，确保中文字符书名正常工作（ChromaDB collection name 只允许 `[a-zA-Z0-9._-]`）。
 
 ---
 
@@ -763,4 +803,4 @@ rm -rf ~/novels/审计测试
 
 ---
 
-*最后更新：2026-05-11（全量规范化：全仓库旧小说名清理；CHARACTER_IDS死代码删除；SKILL.md格式修复）*
+*最后更新：2026-05-11（feature/rag：RAG增强+角色弧光注入+prev_ch修复+collection名SHA256哈希）*

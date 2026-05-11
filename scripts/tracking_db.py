@@ -393,9 +393,11 @@ def find_novel_root(book_name: str) -> str:
     novels_dir = os.path.expanduser("~/novels/")
     for chapter_dir in os.listdir(novels_dir):
         if book_name in chapter_dir:
-            return os.path.join(novels_dir, chapter_dir)
+            candidate = os.path.join(novels_dir, chapter_dir)
+            if os.path.isdir(candidate):
+                return candidate
     direct = os.path.join(novels_dir, book_name)
-    if os.path.exists(direct):
+    if os.path.exists(direct) and os.path.isdir(direct):
         return direct
     raise FileNotFoundError(f"找不到小说: {book_name}")
 

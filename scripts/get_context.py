@@ -103,17 +103,29 @@ def format_active_plots(db_path: str, chapter_num: int) -> str:
 def format_char_arc_compact(arc: dict) -> str:
     """紧凑格式化角色弧光（用于 RAG 参考前的角色说明）"""
     name = arc['name']
-    arc_type = arc.get('arc_type', '待设定')
-    current_state = arc.get('current_state', '未知')
+    arc_type = arc.get('arc_type', '未设定')
+    current_state = arc.get('current_state', '未记录')
     last_ch = arc.get('current_chapter', 0)
     moments = arc.get('key_moments', [])
     last_event = moments[-1]['event'] if moments else None
 
-    lines = [f"  角色名：{name}", f"  弧光类型：{arc_type}", f"  当前状态：{current_state}"]
+    lines = [f"  角色名：{name}"]
+    
+    # 弧光类型：区分未出场与未设定弧光
+    if last_ch == 0:
+        lines.append(f"  弧光类型：未出场（弧光待设定）")
+    else:
+        lines.append(f"  弧光类型：{arc_type}")
+    
+    # 当前状态
+    if last_ch == 0:
+        lines.append(f"  当前状态：新角色，尚未出场")
+    else:
+        lines.append(f"  当前状态：{current_state}")
+    
+    # 上次互动
     if last_ch > 0:
         lines.append(f"  上次互动：第{last_ch}章" + (f"（{last_event}）" if last_event else ""))
-    else:
-        lines.append("  上次互动：尚未出场")
     return '\n'.join(lines)
 
 

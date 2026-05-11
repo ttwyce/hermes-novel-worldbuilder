@@ -14,7 +14,7 @@ rag_retriever.py — RAG 检索模块
 
 import sys
 import os
-
+import functools
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tracking_db
@@ -59,6 +59,14 @@ def get_chroma_client(book_name: str):
 
 # ==================== 检索核心 ====================
 
+@functools.lru_cache(maxsize=1)
+def _get_model():
+    """全局模型缓存（lru_cache 避免重复加载）"""
+    if not SENTENCE_TRANSFORMERS_AVAILABLE:
+        return None
+    return SentenceTransformer('all-MiniLM-L6-v2')
+
+
 def retrieve(
     book_name: str,
     query: str,
@@ -81,8 +89,6 @@ def retrieve(
     if not SENTENCE_TRANSFORMERS_AVAILABLE:
         return []
     
-    from sentence_transformers import SentenceTransformer
-    
     client = get_chroma_client(book_name)
     if client is None:
         return []
@@ -96,9 +102,10 @@ def retrieve(
     if collection.count() == 0:
         return []
     
-    model = SentenceTransformer('all-MiniLM-L6-v2')
+    model = _get_model()
     
-    # 多路检索
+    if model is None:
+        return []
     queries = [q.strip() for q in query.split(',') if q.strip()]
     all_results = []
     
@@ -127,7 +134,6 @@ def retrieve(
                 "text": doc,
                 "chapter": meta.get("chapter", 0),
                 "source": meta.get("chapter_file", "unknown"),
-                "preview": meta.get("text", "")[:50],
             }
             # 去重（按文本内容）
             if not any(r['text'] == item['text'] for r in all_results):

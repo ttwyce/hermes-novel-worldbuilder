@@ -62,6 +62,14 @@ def get_curr_chapter_start(chapter_content: str) -> str:
     text = ''.join(lines[:5])
     return text[:200] if len(text) > 200 else text
 
+def get_chapter_end(chapter_content: str) -> str:
+    """获取章节最后100字"""
+    lines = [l for l in chapter_content.split('\n') if l.strip() and not l.startswith('#')]
+    if not lines:
+        return ""
+    text = ''.join(lines[-3:])
+    return text[-100:] if len(text) > 100 else text
+
 def extract_hook(chapter_content: str) -> str:
     """提取章节末尾的钩子（最后一段）"""
     lines = [l for l in chapter_content.split('\n') if l.strip() and not l.startswith('#')]
@@ -75,14 +83,15 @@ def check_scene_consistency(prev_end: str, curr_start: str) -> dict:
     """检查场景连续性"""
     issues = []
     
-    # 场景关键词（通用，未知小说请保持为空避免误判）
-    scene_keywords = {
-        # '场景名': ['关键词1', '关键词2'],
-        # 示例（适用于校园/修仙类小说，可按需修改）：
-        # '教室': ['教室', '上课', '课堂', '黑板'],
-        # '食堂': ['食堂', '吃饭', '餐桌'],
-        # '宿舍': ['宿舍', '房间', '床', '睡觉'],
-    }
+    # 场景关键词（留空表示未配置，场景检测将跳过）
+    # 格式：'场景名': ['关键词1', '关键词2']
+    # 使用前请根据小说类型取消注释并补充，以下为通用基础场景示例：
+    scene_keywords = {}  # 默认空，配置后格式示例：
+    # scene_keywords = {
+    #     '教室': ['教室', '上课', '课堂', '黑板'],
+    #     '食堂': ['食堂', '吃饭', '餐桌'],
+    #     '宿舍': ['宿舍', '房间', '床'],
+    # }
     
     # 检测当前章节开头的场景
     curr_scene = None
@@ -172,9 +181,16 @@ def check_emotion_continuity(prev_end: str, curr_start: str) -> dict:
     issues = []
     
     # 情绪关键词
-    neg_emotions = ['哭', '悲伤', '难过', '沮丧', '绝望', '愤怒', '紧张', '害怕']
-    pos_emotions = ['笑', '开心', '高兴', '兴奋', '愉快', '轻松', '得意']
-    neutral_emotions = ['平静', '淡定', '冷静', '思考']
+    neg_emotions = [
+        '哭', '悲伤', '难过', '沮丧', '绝望', '愤怒', '紧张', '害怕',
+        '尴尬', '无奈', '委屈', '着急', '焦虑', '失落', '心疼', '羡慕',
+        '嫉妒', '失望', '茫然', '后悔', '遗憾', '惭愧', '羞耻', '恐惧'
+    ]
+    pos_emotions = [
+        '笑', '开心', '高兴', '兴奋', '愉快', '轻松', '得意',
+        '心动', '窃喜', '满足', '幸福', '温暖', '安心', '期待', '憧憬'
+    ]
+    neutral_emotions = ['平静', '淡定', '冷静', '思考', '沉默', '感慨', '怀念']
     
     def count_emotions(text, emotion_list):
         return sum(1 for e in emotion_list if e in text)
@@ -411,14 +427,6 @@ def main():
         sys.exit(1)
     else:
         sys.exit(2)
-
-def get_chapter_end(chapter_content: str) -> str:
-    """获取章节最后100字"""
-    lines = [l for l in chapter_content.split('\n') if l.strip() and not l.startswith('#')]
-    if not lines:
-        return ""
-    text = ''.join(lines[-3:])
-    return text[-100:] if len(text) > 100 else text
 
 if __name__ == "__main__":
     main()
