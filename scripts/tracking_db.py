@@ -365,6 +365,32 @@ def get_all_world_state(db_path: str) -> Dict[str, str]:
     conn.close()
     return {row['key']: row['value'] for row in rows}
 
+# ==================== 元数据操作 ====================
+
+def set_meta(db_path: str, key: str, value: str) -> None:
+    """设置元数据"""
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO meta (key, value) VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    """, (key, value))
+    conn.commit()
+    conn.close()
+
+def get_meta(db_path: str, key: str) -> Optional[str]:
+    """获取元数据"""
+    conn = get_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM meta WHERE key = ?", (key,))
+    row = cursor.fetchone()
+    conn.close()
+    return row['value'] if row else None
+
+def update_meta(db_path: str, key: str, value: str) -> None:
+    """更新元数据（兼容性别名）"""
+    set_meta(db_path, key, value)
+
 # ==================== 工具函数 ====================
 
 def find_novel_root(book_name: str) -> str:

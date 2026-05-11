@@ -595,15 +595,30 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 
 ## 参考文件
 
-- `references/chapter-writing-workflow.md` — 章节写入完整流程（已更新子代理方案）
+### 核心流程
+- `references/chapter-writing-workflow.md` — 章节写入完整流程（子代理方案）
 - `references/writing-style-pitfalls.md` — 写作风格常见问题（节奏/吐槽/人物线/衔接）
 - `references/chapter-completion-checklist.md` — 20项审核标准
-- `references/common-pitfalls.md` — 常见错误与事故
 - `references/writing-quick-ref.md` — 写作速查
+
+### 避坑与案例
+- `references/common-pitfalls.md` — 常见错误与事故
 - `references/truncation-disaster.md` — 截断标记事故案例
 - `references/delegate-batch-failure.md` — 子代理批量失败分析（历史参考）
+- `references/bugcase-export-hardcoded-novelname.md` — 导出硬编码Bug案例（已修复）
+- `references/technical-pitfalls.md` — 技术陷阱与避坑指南
+
+### 设计文档
+- `references/sqlite-storage-architecture.md` — SQLite存储架构详解
+- `references/collaboration-strategy.md` — 协作与生成策略
+- `references/structure-guide.md` — 目录结构参考
+
+### 追踪与进度
 - `references/progress-dashboard.md` — 进度看板模板
 - `references/character-arc-tracker.md` — 角色弧光追踪
+- `references/writing-style-guide.md` — 文风指南
+
+### 脚本
 - `scripts/init_tracking.py` — 初始化新小说数据库（通用）
 - `scripts/init_novel.py` — 初始化小说项目
 - `scripts/verify_chapter.py` — 章节验证脚本（字数）
@@ -618,4 +633,4 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 
 ---
 
-*最后更新：2026-05-11（init_novel串联init_tracking；SKILL.md新增快速入口；trim_utils.py章节精简工具）*
+*最后更新：2026-05-11（修复export_tracking硬编码；SKILL.md参考文件列表补全）*

@@ -29,7 +29,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import tracking_db
 import json
 
-def init_tracking(book_name: str, protagonist: str = None) -> str:
+def init_tracking(book_name: str, protagonist: str = None,
+                  planned_chapters: int = 150,
+                  chapter_word_count: int = 3000) -> str:
     """初始化追踪数据库，返回路径"""
     db_path = tracking_db.get_db_path(book_name)
     
@@ -51,6 +53,10 @@ def init_tracking(book_name: str, protagonist: str = None) -> str:
     }
     
     tracking_db.init_character_arcs(db_path, [protagonist_arc])
+    
+    # 存储计划元数据
+    tracking_db.set_meta(db_path, 'planned_chapters', str(planned_chapters))
+    tracking_db.set_meta(db_path, 'chapter_word_count', str(chapter_word_count))
     
     return db_path
 

@@ -206,7 +206,9 @@ if __name__ == "__main__":
     print(f"\n🔄 初始化追踪数据库...\n")
     import init_tracking
     try:
-        db_path = init_tracking.init_tracking(novel_name, protagonist)
+        db_path = init_tracking.init_tracking(novel_name, protagonist,
+                                               planned_chapters=total_chapters,
+                                               chapter_word_count=chapter_word_count)
         print(f"\n🎉 全部完成！")
         print(f"\n  小说目录: {root}")
         print(f"  追踪数据库: {db_path}")

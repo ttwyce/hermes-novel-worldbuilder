@@ -27,14 +27,19 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
     chapters = tracking_db.get_all_chapters(db_path)
     completed = [c for c in chapters if c['status'] == 'done']
     total_words = sum(c['words'] for c in completed)
-    total = len(chapters) or 150
+    
+    # 优先从 meta 读取计划总章数，否则降级
+    planned = tracking_db.get_meta(db_path, 'planned_chapters')
+    word_count = tracking_db.get_meta(db_path, 'chapter_word_count')
+    total = int(planned) if planned else (len(chapters) or 150)
+    wc = int(word_count) if word_count else 3000
     
     lines = [
         "# 进度看板",
         "",
         f"## {book_name}",
         "",
-        f"**总目标**：{total}章 / {total * 3000 // 10000}万字",
+        f"**总目标**：{total}章 / {total * wc // 10000}万字",
         "",
         "---",
         "",
@@ -71,14 +76,14 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
 
 # ==================== 导出剧情线追踪 ====================
 
-def export_tracking(db_path: str, out_path: str) -> None:
+def export_tracking(db_path: str, out_path: str, book_name: str = None) -> None:
     """导出剧情线追踪.md"""
     chapters = tracking_db.get_completed_chapters(db_path)
     
     lines = [
         "# 剧情线追踪",
         "",
-        "## 卷一：铺垫与启程",
+        f"## {book_name or '小说'}",
         "",
         "---",
     ]
@@ -215,7 +220,7 @@ def export_all(book_name: str) -> None:
     export_progress_board(db_path, os.path.join(outline_dir, "进度看板.md"), book_name)
     print("  ✅ 进度看板.md")
     
-    export_tracking(db_path, os.path.join(outline_dir, "剧情线追踪.md"))
+    export_tracking(db_path, os.path.join(outline_dir, "剧情线追踪.md"), book_name)
     print("  ✅ 剧情线追踪.md")
     
     export_chronicle(db_path, os.path.join(outline_dir, "编年史.md"), book_name)
