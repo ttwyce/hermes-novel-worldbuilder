@@ -123,7 +123,7 @@ patch(第21章第四段：进入四强预告)
 
 ## 陷阱8：终端 workdir 参数不支持中文路径
 
-**问题**：在 `terminal` 工具中使用 `workdir` 参数，且路径包含中文字符（如小说名「时光缓缓」），会报错 `Blocked: workdir contains disallowed character '时'`。
+**问题**：在 `terminal` 工具中使用 `workdir` 参数，且路径包含中文字符（如小说名「某小说」），会报错 `Blocked: workdir contains disallowed`
 
 **原因**：`workdir` 参数对非ASCII字符的校验过于严格。
 
@@ -131,12 +131,12 @@ patch(第21章第四段：进入四强预告)
 
 **错误做法**：
 ```bash
-# 在 terminal 工具中设置 workdir="/home/admin/novels/时光缓缓" ← 失败
+# 在 terminal 工具中设置 workdir="/home/admin/novels/某小说" ← 失败
 ```
 
 **正确做法**：
 ```bash
-cat > "/home/admin/novels/时光缓缓/正文/卷一_铺垫与启程/第3章.md" << 'EOF'
+cat > "/home/admin/novels/某小说/正文/卷一_铺垫与启程/第3章.md" << 'EOF'
 # 第3章
 ...
 EOF
@@ -153,13 +153,13 @@ EOF
 
 **错误调用**：
 ```bash
-python3 post_chapter.py "时光缓缓" 3 字数 "核心事件"
+python3 post_chapter.py "某小说" 3 字数 "核心事件"
 #                              ↑ 这是字符串 "字数"，不是数字 → 报错
 ```
 
 **正确调用**：
 ```bash
-python3 post_chapter.py "时光缓缓" 3 3386 "核心事件" "/完整/路径/第3章.md"
+python3 post_chapter.py "某小说" 3 3386 "核心事件" "/完整/路径/第3章.md"
 #                              ↑ 实际字数（整数）  ↑ 可选：章节文件路径（让脚本自动检测角色）
 ```
 

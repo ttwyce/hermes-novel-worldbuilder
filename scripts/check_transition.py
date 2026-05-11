@@ -4,7 +4,7 @@ check_transition.py — 检查章节衔接是否自然
 
 用法：
   python3 check_transition.py <书名> <当前章节号>
-  python3 check_transition.py "嘴强剑仙" 7
+  python3 check_transition.py "书名" 7
 
 检查内容：
 1. 场景连续性：上一章和本章场景是否衔接
@@ -347,7 +347,7 @@ def generate_report(chapter_num: int, prev_chapter_end: str, curr_chapter_start:
 def main():
     if len(sys.argv) < 3:
         print("用法: python3 check_transition.py <书名> <当前章节号>")
-        print("例:   python3 check_transition.py \"嘴强剑仙\" 7")
+        print("例:   python3 check_transition.py \"书名\" 7")
         sys.exit(3)
     
     book_name = sys.argv[1]

@@ -107,14 +107,14 @@ CREATE TABLE meta (
 python3 post_chapter.py <书名> <章节号> <字数> "<核心事件>" [章节文件路径]
 
 # 示例
-python3 post_chapter.py "嘴强剑仙" 13 2956 "大比32强，陆天击败对手"
+python3 post_chapter.py "某小说" 13 2956 "大比32强，主角击败对手"
 ```
 
 ### migrate_to_sqlite.py 用法
 
 ```bash
 # 仅需执行一次（首次迁移或重建数据库）
-python3 migrate_to_sqlite.py "嘴强剑仙"
+python3 migrate_to_sqlite.py "某小说"
 ```
 
 ---
@@ -141,7 +141,7 @@ cp .tracking/tracking.db .tracking/tracking.db.bak
 cp .tracking/tracking.db.bak .tracking/tracking.db
 
 # 重新导出 MD（从数据库重建）
-python3 export_md.py "嘴强剑仙"
+python3 export_md.py "某小说"
 ```
 
 ---
@@ -153,7 +153,7 @@ python3 export_md.py "嘴强剑仙"
 python3 -c "
 import sys; sys.path.insert(0, 'scripts')
 import tracking_db
-db = tracking_db.get_db_path('嘴强剑仙')
+db = tracking_db.get_db_path('某小说')
 chs = tracking_db.get_all_chapters(db)
 print(f'章节: {len([c for c in chs if c[\"status\"]==\"done\"])} 完成')
 print(f'总字数: {sum(c[\"words\"] for c in chs)}')
@@ -183,12 +183,12 @@ ImportError: cannot import name 'add_character' from 'scripts.tracking_db'
 import sys; sys.path.insert(0, 'scripts')
 from tracking_db import get_db_path, init_character_arcs
 
-db = get_db_path('时光缓缓')
+db = get_db_path('某小说')
 arcs = [
-    {'id': 'C002', 'name': '陆时晏', 'arc_type': '男主',
-     'start_state': '清冷的转学生', 'current_state': '清冷的转学生'},
-    {'id': 'C004', 'name': '林诺', 'arc_type': '闺蜜',
-     'start_state': '开朗的同桌', 'current_state': '开朗的同桌'},
+    {'id': 'C002', 'name': '女主1', 'arc_type': '深化型',
+     'start_state': '起点状态', 'current_state': '起点状态'},
+    {'id': 'C004', 'name': '配角1', 'arc_type': '深化型',
+     'start_state': '起点状态', 'current_state': '起点状态'},
 ]
 init_character_arcs(db, arcs)
 ```

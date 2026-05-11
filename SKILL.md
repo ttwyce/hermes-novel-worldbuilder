@@ -121,7 +121,7 @@ python3 scripts/init_tracking.py "新小说名"
 第X章 章节名
 - 核心事件：XXXX
 - 主要场景：XXXX
-- 出场人物：陆天 + XXX/XXX/XXX
+- 出场人物：主角 + XXX/XXX/XXX
 - 字数目标：约3000字（±20%，即2400-3600）
 ```
 
@@ -412,7 +412,7 @@ tail -3 正文/卷一_XXX/第X章.md
 
 ```bash
 python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书名> [总章节数] [每章字数] --主角 <主角名>
-# 示例：python3 init_novel.py 「时光缓缓」 80 3000 --主角 林晓
+# 示例：python3 init_novel.py 「书名」 80 3000 --主角 主角名
 ```
 
 此命令自动完成：
@@ -603,13 +603,15 @@ python3 ~/.hermes/skills/creative/novel-worldbuilder/scripts/init_novel.py <书�
 
 ## 质量审计清单
 
-每次技能完整性检查，按以下步骤执行：
+每次技能完整性检查，按以下步骤执行 → 详见 `references/skill-audit-procedure.md`（含执行顺序/命令/常见遗漏点）
+
+### 快速审计命令（5步）
 
 ### 1. 硬编码扫描（导出函数）
 
 ```bash
 # export_md.py 和 check_transition.py 中不应有硬编码书名/角色名
-grep -n "嘴强剑仙\|卷一_铺垫\|卷二_对抗\|卷三_高潮" scripts/export_md.py
+grep -n "某旧书名\|卷一_铺垫\|卷二_对抗\|卷三_高潮" scripts/export_md.py
 # 预期：无输出
 
 grep -A5 "scene_keywords = {" scripts/check_transition.py
@@ -620,7 +622,7 @@ grep -A5 "scene_keywords = {" scripts/check_transition.py
 
 ```bash
 # init 后验证模板存在，导出后验证基本参数区块未丢失
-python3 init_novel.py "模板测试" 80 2500 --主角 "林晓" 2>&1 | tail -2
+python3 init_novel.py "模板测试" 80 2500 --主角 "测试主角" 2>&1 | tail -2
 python3 -c "import sys; sys.path.insert(0,'scripts'); import tracking_db, export_md; db = tracking_db.get_db_path('模板测试'); tracking_db.insert_or_update_chapter(db, 1, '第1章', 300, 'done', '测试'); export_md.export_all('模板测试')"
 grep "## 基本参数" 大纲/进度看板.md
 # 预期：有输出（模板结构保留）
@@ -659,7 +661,7 @@ rm -rf ~/novels/审计测试
 
 ### 3. SKILL.md 引用完整性
 
-参考文件列表（15个）与实际文件（15个）必须一致，scripts（10个）与实际一致。
+参考文件列表（13个）与实际文件（14个）必须一致，scripts（10个）与实际一致。
 
 ---
 
@@ -683,10 +685,8 @@ rm -rf ~/novels/审计测试
 - `references/collaboration-strategy.md` — 协作与生成策略
 - `references/structure-guide.md` — 目录结构参考
 
-### 追踪与进度
-- `references/progress-dashboard.md` — 进度看板模板
-- `references/character-arc-tracker.md` — 角色弧光追踪
-- `references/writing-style-guide.md` — 文风指南
+### 写作风格
+- `references/writing-style-guide.md` — 五种风格指南（搞笑/热血/治愈/刀子/悬疑）
 
 ### 脚本
 - `scripts/init_tracking.py` — 初始化新小说数据库（通用）
@@ -697,10 +697,11 @@ rm -rf ~/novels/审计测试
 - `scripts/tracking_db.py` — SQLite 数据库操作模块
 - `scripts/export_md.py` — Markdown 导出模块
 - `scripts/post_chapter.py` — 子代理收尾脚本（通用版：数据库+角色检测+导出MD）
-| `scripts/trim_utils.py` | 章节精简工具（分析/精简/自动压缩超长章节）<br>⚠️ `trim_to_target()` 只分析不修改；`auto_trim()` 才实际修改文件 |
-- `scripts/migrate_to_sqlite.py` — 嘴强剑仙专用迁移脚本（历史数据）
+- `scripts/trim_utils.py` — 章节精简工具（分析/精简/自动压缩超长章节）
+  > ⚠️ `trim_to_target()` 只分析不修改；`auto_trim()` 才实际修改文件
+- `scripts/migrate_to_sqlite.py` — 通用迁移脚本（历史数据）
 - `templates/chapter-template.md` — 章节模板
 
 ---
 
-*最后更新：2026-05-11（小说存放路径从 ~/hermes/novels/ 改为 ~/novels/）*
+*最后更新：2026-05-11（全量规范化：全仓库旧小说名清理；CHARACTER_IDS死代码删除；SKILL.md格式修复）*

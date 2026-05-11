@@ -19,13 +19,8 @@ from typing import Optional, List, Dict, Any
 # 默认数据库路径（相对于小说根目录）
 DB_NAME = ".tracking/tracking.db"
 
-# 角色映射
-CHARACTER_IDS = {
-    '陆天': 'A01', '叶琳': 'A02', '苏清雪': 'A03',
-    '陈朵朵': 'A04', '赵婉清': 'A05',
-    '李明辉': 'B01', '陈浩': 'C01', '周天成': 'B02',
-}
-CHARACTER_NAMES = {v: k for k, v in CHARACTER_IDS.items()}
+# 角色ID预注册表（由 init_tracking.init_db 创建，add_character 添加）
+# 此处不硬编码任何角色名，保持通用
 
 # ==================== 数据库初始化 ====================
 
