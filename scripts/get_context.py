@@ -100,6 +100,23 @@ def format_active_plots(db_path: str, chapter_num: int) -> str:
     
     return '\n'.join(lines)
 
+def format_char_arc_compact(arc: dict) -> str:
+    """紧凑格式化角色弧光（用于 RAG 参考前的角色说明）"""
+    name = arc['name']
+    arc_type = arc.get('arc_type', '待设定')
+    current_state = arc.get('current_state', '未知')
+    last_ch = arc.get('current_chapter', 0)
+    moments = arc.get('key_moments', [])
+    last_event = moments[-1]['event'] if moments else None
+
+    lines = [f"  角色名：{name}", f"  弧光类型：{arc_type}", f"  当前状态：{current_state}"]
+    if last_ch > 0:
+        lines.append(f"  上次互动：第{last_ch}章" + (f"（{last_event}）" if last_event else ""))
+    else:
+        lines.append("  上次互动：尚未出场")
+    return '\n'.join(lines)
+
+
 def generate_context(book_name: str, chapter_num: int) -> str:
     """生成完整的章节上下文"""
     db_path = tracking_db.get_db_path(book_name)
@@ -153,19 +170,22 @@ def generate_context(book_name: str, chapter_num: int) -> str:
     lines.append("")
     
     # RAG 写作参考（基于历史章节的相关段落）
+    prev_ch = chapter_num - 1  # 提前定义，供 RAG 场景检索使用
     try:
         import rag_retriever
         
         rag_lines = ["【RAG 写作参考】"]
         rag_has_content = False
         
-        # 1. 久未互动的角色 → 检索他们之前的情节
+        # 1. 久未互动的角色 → 结构化信息 + 正文段落
         for gap, name, arc in least_recent[:3]:
             if gap >= 3:
+                rag_has_content = True
+                rag_lines.append(f"\n  【{name}】")
+                rag_lines.append(format_char_arc_compact(arc))
                 refs = rag_retriever.retrieve(book_name, name, n=2, exclude_chapter=chapter_num)
                 if refs:
-                    rag_has_content = True
-                    rag_lines.append(f"\n  关于「{name}」的历史片段：")
+                    rag_lines.append("  历史片段：")
                     for r in refs[:2]:
                         text = r['text']
                         if len(text) > 150:
@@ -201,7 +221,6 @@ def generate_context(book_name: str, chapter_num: int) -> str:
         pass
     
     # 章节衔接提示
-    prev_ch = chapter_num - 1
     if prev_ch >= 1:
         chapter = tracking_db.get_chapter(db_path, prev_ch)
         if chapter:
