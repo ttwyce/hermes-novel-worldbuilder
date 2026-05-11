@@ -169,6 +169,42 @@ grep "第X章" 大纲/编年史.md
 
 ---
 
+## 角色管理（易错点）
+
+⚠️ **`tracking_db.py` 没有 `add_character()` 函数**。尝试导入会得到：
+```
+ImportError: cannot import name 'add_character' from 'scripts.tracking_db'
+```
+
+正确做法：用 `init_character_arcs()` 添加新角色到已有数据库。
+
+**正确调用示例**：
+```python
+import sys; sys.path.insert(0, 'scripts')
+from tracking_db import get_db_path, init_character_arcs
+
+db = get_db_path('时光缓缓')
+arcs = [
+    {'id': 'C002', 'name': '陆时晏', 'arc_type': '男主',
+     'start_state': '清冷的转学生', 'current_state': '清冷的转学生'},
+    {'id': 'C004', 'name': '林诺', 'arc_type': '闺蜜',
+     'start_state': '开朗的同桌', 'current_state': '开朗的同桌'},
+]
+init_character_arcs(db, arcs)
+```
+
+⚠️ **字段名是 `id`，不是 `char_id`**。用 `char_id` 会得到 `KeyError: 'id'`。
+
+### 更新单角色状态（章节互动后）
+
+```python
+from tracking_db import touch_character, get_db_path
+db = get_db_path('书名')
+touch_character(db, 'C002', 15)  # C002这个角色在第15章有互动
+```
+
+---
+
 ## 迁移记录
 
 | 日期 | 操作 |
@@ -177,3 +213,4 @@ grep "第X章" 大纲/编年史.md
 | | 创建 tracking_db.py, export_md.py, migrate_to_sqlite.py |
 | | 重写 post_chapter.py（基于 SQLite） |
 | | SKILL.md 新增存储架构章节 |
+| 2026-05-10 | 补充角色管理易错点（`add_character` 不存在，字段名是 `id` 不是 `char_id`） |
