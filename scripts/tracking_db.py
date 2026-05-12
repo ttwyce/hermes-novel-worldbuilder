@@ -250,9 +250,19 @@ def get_character_arc(db_path: str, char_id: str) -> Optional[Dict]:
 # ==================== 伏笔钩子操作 ====================
 
 def add_plot_hook(db_path: str, chapter_id: int, plot: str) -> int:
-    """添加伏笔钩子，返回自增ID"""
+    """添加伏笔钩子，返回自增ID（去重：同章节+同描述的活跃伏笔不重复插入）"""
     conn = get_connection(db_path)
     cursor = conn.cursor()
+    # 去重检查：同章节 + 同描述 + 仍活跃 → 返回已有ID
+    cursor.execute("""
+        SELECT id FROM plot_hooks
+        WHERE chapter_id=? AND plot=? AND status='active'
+    """, (chapter_id, plot))
+    existing = cursor.fetchone()
+    if existing:
+        hook_id = existing['id']
+        conn.close()
+        return hook_id
     cursor.execute("""
         INSERT INTO plot_hooks (chapter_id, plot, status)
         VALUES (?, ?, 'active')

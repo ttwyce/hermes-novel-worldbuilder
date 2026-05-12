@@ -8,7 +8,7 @@ rag_retriever.py — RAG 检索模块
 - 返回格式化文本供 get_context 使用
 
 用法：
-  python3 rag_retriever.py "书名" "赵婉清" --n 3
+  python3 rag_retriever.py "书名" "角色名" --n 3
   python3 rag_retriever.py "书名" "青云峰,大比" --n 2
 """
 

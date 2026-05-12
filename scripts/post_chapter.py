@@ -54,23 +54,54 @@ def detect_and_update_characters(db_path: str, chapter_path: str, chapter_num: i
     
     # 已注册角色：检测到则更新最新互动章节
     for name, char_id in char_names.items():
-        if name in text and char_id not in found:
+        # 精确词边界匹配：name 前后必须是非中文字符（或字符串边界）
+        import re
+        # 用 \b 在中文字符上不work，手动检查边界
+        pattern = re.compile(r'(?:^|[^\u4e00-\u9fa5])' + re.escape(name) + r'(?:$|[^a-zA-Z0-9\u4e00-\u9fa5])')
+        if pattern.search(text) and char_id not in found:
             found.append(char_id)
             log(f"检测到角色: {name} ({char_id})")
             tracking_db.touch_character(db_path, char_id, chapter_num)
     
     # 自动注册新角色：扫描对话段落中疑似新角色名
-    # 匹配模式：名字（2-4字）紧跟对话引导语
-    # 注意：引导语必须紧跟名字（如"赵婉清道"），中间有其他字（如"赵婉清笑着"）会误匹配
+    # 匹配策略：名字+引导语 前后都不能是中文字符（词边界控制）
+    # 正则只做粗筛，is_valid_name 做二次验证
     import re
-    # 动词列表：严格使用"紧跟名字后"的引导语，不含副词/形容词
     dialogue_pattern = re.compile(
-        r'([\u4e00-\u9fa5]{2,4})(?:'
+        r'(?:^|[^\u4e00-\u9fa5])([\u4e00-\u9fa5]{2,4})(?:'
         r'道|说|问|答|喊|叫|应|回|叹|'
         r'低声道|低声说|悄声道|沉声道|朗声道|'
         r'傲然道|淡然道|缓缓道|'
         r'冷笑|冷哼|怒道|喜道)'
+        r'(?=[^a-zA-Z0-9\u4e00-\u9fa5]|$)'
     )
+
+    def is_valid_name(name: str) -> bool:
+        """验证是否为合理的角色名（排除常见误匹配模式）"""
+        if len(name) < 2 or name in excluded_words:
+            return False
+        # 常见误匹配模式（前面或后面有其他中文字符）
+        partial_words = {
+            '主角小声', '小声问', '主角问', '主角说', '主角道',
+            '主角轻', '主角微', '主角笑', '主角低', '主角悄',
+            '小声嘀咕', '他嘀咕', '她嘀咕', '主角嘀咕',
+            '苏晴没有', '苏晴微', '苏晴轻', '苏晴笑',
+            '给出正确', '正确回答', '没有回答', '不回答',
+            '嘀咕道', '嘀咕说', '嘀咕问',
+            '在老师提', '老师提问', '老师问',
+            '同学围着', '围着问',
+            '是不是有', '有什么', '是不是',
+            '但不知', '我也不知', '不知怎么',
+            '他也不知', '她也不知',
+            '主角也不知',
+        }
+        if name in partial_words:
+            return False
+        # 检查是否包含常见动词/副词
+        action_chars = {'轻', '微', '笑', '着', '地', '得', '吗', '呢', '吧', '啊'}
+        if any(c in action_chars for c in name):
+            return False
+        return True
     excluded_words = {
         '说道', '问道', '答道', '一个', '这个', '那个', '什么', '怎么', '如此', '这时',
         '大家', '有人', '边上', '转身', '微微', '突然', '连忙', '急忙', '众人', '此时',
@@ -92,7 +123,7 @@ def detect_and_update_characters(db_path: str, chapter_path: str, chapter_num: i
     mentioned = set()
     for m in dialogue_pattern.finditer(text):
         name = m.group(1)
-        if name not in excluded_words and len(name) >= 2:
+        if is_valid_name(name):
             mentioned.add(name)
     
     # 自动注册未在数据库中的角色
@@ -164,7 +195,8 @@ def main():
     parser.add_argument('chapter_num', type=int, help='章节号')
     parser.add_argument('char_count', type=int, help='字数')
     parser.add_argument('core_event', help='核心事件（引号包裹）')
-    parser.add_argument('chapter_path', nargs='?', default=None, help='章节文件路径（可选）')
+    parser.add_argument('--chapter-path', dest='chapter_path', default=None,
+                        help='章节文件路径（可选）')
     parser.add_argument('plot_hook', nargs='?', default=None, help='伏笔钩子（可选）')
     parser.add_argument('--world-state', dest='world_state', default=None,
                         help='世界状态，格式: "境界:炼气期,地点:青云峰"')
@@ -216,8 +248,12 @@ def main():
     # 2. 自动查找章节文件并检测角色
     if not chapter_path:
         chapter_path = find_chapter_file(novel_root, chapter_num)
+        if not chapter_path:
+            log(f"⚠️ 自动查找章节文件失败，请手动传入章节路径")
     
     characters = detect_and_update_characters(db_path, chapter_path, chapter_num)
+    if characters:
+        log(f"检测到角色 {len(characters)} 个: {characters}")
     
     # 3. 追加编年史
     log("追加编年史...")

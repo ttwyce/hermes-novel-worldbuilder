@@ -26,7 +26,7 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 | 创建小说目录+数据库 | `python3 scripts/init_novel.py 「书名」 150 3000 --主角 主角名` |
 | 查看章节上下文 | `python3 scripts/get_context.py 「书名」 5` |
 | 验证章节字数 | `python3 scripts/verify_chapter.py 第5章.md 3000` |
-|| 更新追踪文件（+伏笔+世界状态） | `python3 scripts/post_chapter.py 「书名」 5 3000 「核心事件」 「伏笔」 --world-state "境界:炼气期"` |
+|| 更新追踪文件（+伏笔+世界状态） | `python3 scripts/post_chapter.py 「书名」 5 3000 「核心事件」 [「伏笔」] [--world-state "境界:炼气期"] [--chapter-path "文件路径"]` |
 | 导出追踪文件 | `python3 scripts/export_md.py 「书名」` |
 | 检查章节衔接 | `python3 scripts/check_transition.py 「书名」 6` |
 
@@ -93,6 +93,14 @@ description: 根据用户输入的剧情梗概，自动生成完整详实的小�
 > 另一历史Bug（2026-05-11）：`lines_text` 变量在 `if/elif/else` 分支中未被正确赋值导致 `UnboundLocalError`。根因：`existing_text is None` 分支内用 `lines = [...]`（列表）而非 `lines_text`（字符串），且 `elif marker in existing_text` 在 `existing_text is None` 分支之后但 `marker` 变量定义位置不对。修复方式：统一使用 `lines_text` 作为最终字符串变量，确保所有分支都有赋值。
 >
 > 全面检查修复（2026-05-11）：共9个问题——export_arc_tracking `current_state` 重复字段；rag_indexer overlap 负数风险（`effective_overlap = min(overlap, len(current)//2)`）；get_chapter_end 定义但从未使用（从 check_transition.py 移除）；generate_report 的 unused curr_chapter_end 参数（已移除）；trim_utils.py 的 `--target` 参数位置检测逻辑（含糊已简化）；trim_to_target 的 dry_run 参数从不生效（已移除）；post_chapter.py 自动注册循环内重复调用 get_all_character_arcs（改用预查缓存）；
+>
+> 测试修复（2026-05-11）：b1 - argparse nargs='?' 位置参数错位（`chapter_path` 误接收第6个位置参数「伏笔」），改为 `--chapter-path` flag；b2 - 正则匹配复合词（`主角小声问` 误捕获 `小声`），加 `is_valid_name` 二次验证；b3 - 词边界检测（`name in text` 太宽泛），改用 `(?:^|[^一-龥])name(?:$|[^a-zA-Z0-9一-龥])` 边界匹配；
+>
+> ⚠️ **已知架构性缺陷（2026-05-11 测试发现，b1/b2 已修复）**：
+> - ~~**自动注册 false positive**~~ → 已缓解（is_valid_name 二次验证 + 词边界正则），架构级限制无法根除
+> - ~~**find_chapter_file 内部调用不稳定**~~ → 已修复：argparse chapter_path 改为 `--chapter-path` flag
+> - ~~**词边界检测**~~ → 已修复：post_chapter.py 用正则边界匹配 `get_context` 角色检测正常
+> - ~~**伏笔重复写入**~~ → 已修复：P2 修复指南见 `references/auto-registration-fix-log.md`
 
 **新小说初始化**：
 ```bash
@@ -161,7 +169,7 @@ python3 scripts/rag_indexer.py "书名" 5
 python3 scripts/rag_indexer.py "书名" --stats
 
 # 单独检索（调试用）
-python3 scripts/rag_retriever.py "书名" "赵婉清" --n 3
+python3 scripts/rag_retriever.py "书名" "角色名" --n 3
 ```
 
 **注意**：`chromadb` 和 `sentence-transformers` 是可选依赖。未安装时 RAG 功能静默跳过，追踪系统正常工作。
@@ -802,6 +810,7 @@ rm -rf ~/novels/审计测试
 - `references/audit-checklist.md` — 全面检查清单（5类必检项 + 常见遗漏表）
 - `references/skill-audit-procedure.md` — 审计执行流程（顺序 + 每轮检查内容）
 - `references/tracking-system-audit.md` — **SQLite跟踪系统审计方法论**（三链路检查：写入→读取→导出）← 重要
+- `references/auto-registration-fix-log.md` — 自动注册 false positive 调查与修复记录（含架构性缺陷说明）
 
 ---
 

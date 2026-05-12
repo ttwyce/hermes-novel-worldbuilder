@@ -10,8 +10,7 @@ rag_indexer.py — 章节内容向量化索引
 
 用法：
   python3 rag_indexer.py "书名" [章节号]
-  python3 rag_indexer.py "时光缓缓"      # 索引全书记得
-  python3 rag_indexer.py "时光缓缓" 5   # 只索引第5章
+  python3 rag_indexer.py "书名" 5   # 只索引第5章
 """
 
 import sys

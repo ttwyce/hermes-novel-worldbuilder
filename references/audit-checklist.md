@@ -129,4 +129,95 @@ python3 -m py_compile scripts/*.py 2>&1
 
 ---
 
+## 全面检查发现的 Bug 模式（2026-05-11 本次新增）
+
+本次全面检查覆盖 12 个脚本，发现以下可复用的 Bug 模式：
+
+### B-1：字段重复（输出格式错误）
+
+**文件**：export_md.py
+**问题**：`export_arc_tracking()` 中 `current_state` 字段在循环内出现两次（`当前阶段` 和 `当前心理状态` 都引用同一字段）
+**检测方式**：搜索同一函数内是否有重复字段引用
+**修复**：删除重复行，保留语义最准确的那个
+
+### B-2：边界条件导致负数索引
+
+**文件**：rag_indexer.py
+**问题**：`overlap` 逻辑中若 `len(current) <= overlap`，`current[-overlap:]` 返回空串或错误前缀
+**检测方式**：`py_compile` 不报错，需人工逻辑审查；写测试用例验证 overlap 值大于 current 长度的情况
+**修复**：`effective_overlap = min(overlap, len(current) // 2)` 确保 overlap 有上限
+
+### B-3：未使用函数定义（死代码）
+
+**文件**：check_transition.py
+**问题**：`get_chapter_end()` 定义后从未被调用（`main()` 调用了但后来移除调用处却漏删函数）
+**检测方式**：grep 函数名，检查出现次数是否只有定义处一处
+**修复**：删除整函数定义；若函数仍有参考价值则保留但修复调用链
+
+### B-4：未使用参数
+
+**文件**：check_transition.py
+**问题**：`generate_report()` 接收 `curr_chapter_end` 参数但函数体内从未使用
+**检测方式**：检查 `generate_report` 调用处传入的参数数量与签名是否匹配；审查函数体内参数引用
+**修复**：从签名和调用处同时移除该参数
+
+### B-5：参数解析逻辑含糊
+
+**文件**：trim_utils.py
+**问题**：`--target` 参数位置检测使用 `int(sys.argv[3]) if ... and sys.argv[2] != '--target'`，逻辑容易误判
+**检测方式**：读参数解析代码，验证每个 argv 位置组合是否都能被正确处理
+**修复**：简化为 `默认值 + if '--target' in argv: idx = argv.index(...); target = int(argv[idx+1])`
+
+### B-6：误导性 API（参数无效）
+
+**文件**：trim_utils.py
+**问题**：`trim_to_target(filepath, target, dry_run=True)` 的 `dry_run` 参数在函数体内从无分支行为，无论传什么都只分析不修改
+**检测方式**：搜索 `dry_run` 在函数体内的所有引用，确认是否有 `if dry_run` 分支
+**修复**：移除无效参数；文档中明确说明"此函数只分析，实际修改在 auto_trim 中"
+
+### B-7：循环内重复 DB 查询（N+1 问题）
+
+**文件**：post_chapter.py
+**问题**：自动注册循环内每次调用 `get_all_character_arcs(db_path)`，N 个新角色 = N 次数据库查询
+**检测方式**：搜索循环内是否有 SQL 查询或 `get_all_*` 调用
+**修复**：循环外预查一次，用本地列表追踪已分配 ID
+
+### B-8：重叠分支条件导致分支无效
+
+**文件**：trim_utils.py
+**问题**：`trim` 子命令中 `target = int(sys.argv[3])` 和 `if '--target' in sys.argv` 重叠，后面的 `if` 永远执行不到（前面的赋值总是先运行）
+**检测方式**：逐行审查 if 分支，确认每个分支在逻辑上是否可达
+**修复**：合并简化逻辑，移除不可达分支
+
+### B-9：参数有默认值但调用处从不使用
+
+**文件**：export_md.py
+**问题**：`export_world_state(..., book_name: str = None)` 有默认值，但调用处 `export_all()` 内总显式传值
+**影响**：低（不影响功能，仅代码冗余）
+**检测方式**：grep 搜函数定义中的默认参数值，检查所有调用处是否都显式传参
+
+### 快速扫描命令（检测上述 B 类问题）
+
+```bash
+# B-3: 检测未使用函数（定义处只出现一次）
+for f in scripts/*.py; do
+  for func in $(grep -Po '^def \K\w+' "$f"); do
+    count=$(grep -c "$func" "$f")
+    [[ $count -eq 1 ]] && echo "DEAD: $f::$func"
+  done
+done
+
+# B-4: 检测调用处参数数量与签名是否匹配
+# （需人工审查 generate_report 等函数的调用链）
+
+# B-6: 检测 dry_run 参数是否在函数内有分支行为
+grep -n "dry_run" scripts/trim_utils.py
+
+# B-7: 检测循环内是否有 get_all_* 调用
+awk '/^def detect_and_update/,/^def [a-z]/' scripts/post_chapter.py | grep -n "get_all_"
+
+# B-8: trim 子命令参数解析路径可达性审查
+grep -A10 "command == 'trim'" scripts/trim_utils.py
+```
+
 *本清单为通用审计标准。审计执行顺序和流程见 `references/skill-audit-procedure.md`*
