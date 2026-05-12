@@ -10,15 +10,17 @@
 
 **目标**：所有 .py / .md / .txt 文件中，**除** `migrate_to_sqlite.py`、`bugcase-*.md`、`truncation-disaster.md` 外，不得包含任何旧小说名。
 
-**旧小说名清单**：
+**旧小说名清单**（已删除的书/角色，不含当前项目）：
 ```
-嘴强剑仙 / 陆天 / 叶琳 / 苏清雪 / 赵婉清 / 陈朵朵 / 摆烂修仙 / 李明辉 / 陈浩 / 周天成 / 林晓 / 时光缓缓 / 陆时晏 / 林诺 / 周窈 / 陈绥
+嘴强剑仙 / 陆天 / 叶琳 / 苏清雪 / 赵婉清 / 陈朵朵 / 摆烂修仙 / 李明辉 / 陈浩 / 周天成 / 林晓
 ```
+
+> ⚠️ **当前项目「时光缓缓」/ 陆时晏 / 林诺 / 周窈 / 陈绥 不是旧书名。**
 
 **扫描命令**：
 ```bash
 cd ~/.hermes/skills/creative/novel-worldbuilder
-grep -rEl "嘴强剑仙|陆天|叶琳|苏清雪|赵婉清|陈朵朵|摆烂修仙|李明辉|陈浩|周天成|林晓|时光缓缓|陆时晏|林诺" \
+grep -rEl "嘴强剑仙|陆天|叶琳|苏清雪|赵婉清|陈朵朵|摆烂修仙|李明辉|陈浩|周天成|林晓" \
   --include="*.py" --include="*.md" --include="*.txt" . | \
   grep -v -E "(bugcase-|truncation-|migrate_to_sqlite)" | \
   grep -v ".git"
@@ -108,10 +110,9 @@ python3 -m py_compile scripts/*.py 2>&1
 | 🔴 高 | `check_transition.py` 示例写死书名 | `grep "时光缓缓\|嘴强剑仙" scripts/check_transition.py` |
 | 🔴 高 | `tracking_db.py` 含 CHARACTER_IDS 硬编码 | `grep "陆天\|叶琳" scripts/tracking_db.py` |
 | 🔴 高 | `init_tracking.py` 错误提示含旧路径 | `grep "hermes/novels" scripts/init_tracking.py` |
-| 🟡 中 | `SKILL.md` 示例命令含具体书名 | `grep "时光缓缓\|嘴强剑仙" SKILL.md` |
+| 🟡 中 | `SKILL.md` 示例命令含具体书名（如RAG输出示例） | `grep "时光缓缓\|嘴强剑仙\|赵婉清\|陈朵朵\|陆天" SKILL.md` |
 | 🟡 中 | `references/` 下 Bug 案例文档未清理旧名 | `grep "嘴强剑仙" references/*.md` |
-| 🟡 中 | `writing-style-guide.md` 只有单一风格 | 检查是否覆盖多种风格 |
-| 🟢 低 | `SKILL.md` trim_utils 条目格式错误（表格语法滥用） | 检查是否为 `\| ` 开头非表格行 |
+| 🟡 中 | **两轮审计原则**：第一轮查.py脚本问题，第二轮查.md文档残留 | 文档（.md）常用真实角色名做示例，第一轮扫描.py时可能漏过 |
 | 🟢 低 | `SKILL.md` 参考文件数量与实际不符 | `ls references/*.md \| wc -l` |
 
 ---

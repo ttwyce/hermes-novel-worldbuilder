@@ -65,7 +65,13 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
     ])
     
     marker = "## 待处理问题（BLOCKERS）"
-    if existing_text is None:
+    # 移除旧的章节进度 section（避免重复追加）
+    import re
+    existing_text_no_progress = re.sub(
+        r'\n*## 章节进度\n.*?(?=\n## 待处理问题|\n## 本月目标|\Z)',
+        '', existing_text, flags=re.DOTALL
+    ) if existing_text else existing_text
+    if existing_text_no_progress is None:
         # 无模板，纯生成
         lines = [
             "# 进度看板",
@@ -83,13 +89,13 @@ def export_progress_board(db_path: str, out_path: str, book_name: str = None) ->
             f"- **更新时间**：{datetime.now().strftime('%Y-%m-%d')}",
         ]
         lines_text = '\n'.join(lines)
-    elif marker in existing_text:
+    elif marker in existing_text_no_progress:
         # 在"## 待处理问题"前插入章节进度
-        parts = existing_text.split(marker, 1)
+        parts = existing_text_no_progress.split(marker, 1)
         lines_text = parts[0].rstrip('\n') + '\n\n' + '\n'.join(chapter_lines) + '\n\n---\n\n' + marker + parts[1]
     else:
         # 模板格式不符，直接追加
-        lines_text = existing_text.rstrip('\n') + '\n\n' + '\n'.join(chapter_lines)
+        lines_text = existing_text_no_progress.rstrip('\n') + '\n\n' + '\n'.join(chapter_lines)
     
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with open(out_path, 'w', encoding='utf-8') as f:
